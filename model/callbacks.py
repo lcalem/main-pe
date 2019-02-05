@@ -17,4 +17,4 @@ class SaveModel(Callback):
         if self.verbose:
             print('Saving model @epoch=%05d to %s' % (epoch + 1, filename))
 
-        model.save_weights(filename)
+        self.model.save_weights(filename)

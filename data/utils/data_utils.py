@@ -209,3 +209,5 @@ def assign_knn_confidence(c, num_iter=2):
             if np.isnan(c[i, 0]):
                 c[i, 0] = _search_knn(dsl80j3d.neighbors[i])
 
+                
+                

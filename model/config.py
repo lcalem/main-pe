@@ -1,8 +1,5 @@
 import numpy as np
 
-import keras.backend as K
-K.set_image_data_format('channels_last')
-
 
 class DataConfig(object):
     '''
@@ -31,10 +28,7 @@ class DataConfig(object):
 
         self.crop_resolution = crop_resolution
         self.image_channels = image_channels
-        if K.image_data_format() == 'channels_last':
-            self.input_shape = crop_resolution + image_channels
-        else:
-            self.input_shape = image_channels + crop_resolution
+        self.input_shape = crop_resolution + image_channels   # channels last
         self.angles = angles
         self.fixed_angle = fixed_angle
         self.scales = scales

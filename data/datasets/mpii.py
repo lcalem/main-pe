@@ -4,8 +4,10 @@ import numpy as np
 import scipy.io as sio
 from PIL import Image
 
-from data.data_utils import pa16j2d
-from data.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE
+from data.utils.bbox import objposwin_to_bbox
+from data.utils.data_utils import pa16j2d, get_visible_joints
+from data.utils.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE
+from data.utils.transform import ImageTransform, normalize_channels, transform_2d_points
 
 
 def load_mpii_mat_annotation(filename):
@@ -84,9 +86,9 @@ class MpiiSinglePerson(object):
         try:
             annot = self.samples[mode][key]
             image = self.images[mode][annot['imgidx']][0]
-            imgt = T(Image.open(os.path.join(self.dataset_path, 'images', image)))
+            imgt = ImageTransform(Image.open(os.path.join(self.dataset_path, 'images', image)))
         except Exception as e:
-            print('Error loading sample key/mode: %d/%d (%s)' % (key, mode, str(e))
+            print('Error loading sample key/mode: %d/%d (%s)' % (key, mode, str(e)))
             raise
 
         return imgt
