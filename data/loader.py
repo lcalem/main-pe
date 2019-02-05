@@ -7,9 +7,7 @@ from multiprocessing import Queue
 import queue
 import threading
 
-from keras.utils import Sequence
-
-from models import utils
+from tensorflow.keras.utils import Sequence
 
 
 class BatchLoader(Sequence):
@@ -102,6 +100,9 @@ class BatchLoader(Sequence):
                 self.lock.append(threading.Lock())
 
     def __len__(self):
+        '''
+        computes the max number of epochs (length data / batch_size)
+        '''
         dataset_len = []
         for d in range(self.num_datasets):
             dataset_len.append(
@@ -161,9 +162,10 @@ class BatchLoader(Sequence):
         return data_dict
 
     def get_shape(self, dictkey):
-        """Inception of get_shape method.
+        '''
+        Inception of get_shape method.
         First check if it is a custom key.
-        """
+        '''
         for dummyout in self.custom_dummy_dictkey:
             if dictkey == dummyout[0]:
                 return dummyout[1]

@@ -84,10 +84,9 @@ class MpiiSinglePerson(object):
         try:
             annot = self.samples[mode][key]
             image = self.images[mode][annot['imgidx']][0]
-            imgt = T(Image.open(os.path.join(
-                self.dataset_path, 'images', image)))
-        except:
-            print('Error loading sample key/mode: %d/%d' % (key, mode))
+            imgt = T(Image.open(os.path.join(self.dataset_path, 'images', image)))
+        except Exception as e:
+            print('Error loading sample key/mode: %d/%d (%s)' % (key, mode, str(e))
             raise
 
         return imgt

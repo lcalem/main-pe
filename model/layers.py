@@ -2,41 +2,40 @@ import numpy as np
 
 from keras import backend as K
 
-from keras.layers import Input
-from keras.layers import Lambda
-from keras.layers import Dense
-from keras.layers import Flatten
-from keras.layers import Dropout
-from keras.layers import Activation
-from keras.layers import Conv1D
-from keras.layers import Conv2D
-from keras.layers import Conv3D
-from keras.layers import SeparableConv2D
-from keras.layers import Conv2DTranspose
-from keras.layers import BatchNormalization
-from keras.layers import SimpleRNN
-from keras.layers import LSTM
-from keras.layers import TimeDistributed
-from keras.layers import multiply
-from keras.layers import average
-from keras.layers import concatenate
-from keras.layers import add
+from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import Lambda
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import Conv1D
+from tensorflow.keras.layers import Conv2D
+from tensorflow.keras.layers import Conv3D
+from tensorflow.keras.layers import SeparableConv2D
+from tensorflow.keras.layers import Conv2DTranspose
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import SimpleRNN
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import TimeDistributed
+from tensorflow.keras.layers import multiply
+from tensorflow.keras.layers import average
+from tensorflow.keras.layers import concatenate
+from tensorflow.keras.layers import add
 
-from keras.layers import AveragePooling2D
-from keras.layers import MaxPooling2D
-from keras.layers import MaxPooling3D
-from keras.layers import GlobalMaxPooling1D
-from keras.layers import GlobalMaxPooling2D
-from keras.layers import GlobalMaxPooling3D
-from keras.layers import GlobalAveragePooling1D
-from keras.layers import GlobalAveragePooling2D
-from keras.layers import ZeroPadding2D
+from tensorflow.keras.layers import AveragePooling2D
+from tensorflow.keras.layers import MaxPooling2D
+from tensorflow.keras.layers import MaxPooling3D
+from tensorflow.keras.layers import GlobalMaxPooling1D
+from tensorflow.keras.layers import GlobalMaxPooling2D
+from tensorflow.keras.layers import GlobalMaxPooling3D
+from tensorflow.keras.layers import GlobalAveragePooling1D
+from tensorflow.keras.layers import GlobalAveragePooling2D
+from tensorflow.keras.layers import ZeroPadding2D
 
-from keras.layers import UpSampling2D
-from keras.layers import UpSampling3D
+from tensorflow.keras.layers import UpSampling2D
 
-from keras.constraints import unit_norm
-from keras.regularizers import l1
+# from keras.constraints import unit_norm
+# from keras.regularizers import l1
 
 # from deephar.utils.math import linspace_2d
 # from deephar.activations import channel_softmax_1d
@@ -45,8 +44,31 @@ from keras.regularizers import l1
 
 
 def conv(x, filters, size, strides=(1, 1), padding='same', name=None):
-    x = Conv2D(filters, size, strides=strides, padding=padding,
-            use_bias=False, name=name)(x)
+    x = Conv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=name)(x)
+    return x
+
+
+def up(x, upsize=(2, 2), name=None):
+    up_name = name + '_up' if name else None
+    x = UpSampling2D(size=upsize, name=up_name)(x)
+    return x
+
+
+def upconv_bn_act(x, filters, size, upsize=(2, 2), strides=(1, 1), padding='same', activation='relu', name=None):
+    if name is not None:
+        up_name = name + '_up'
+        conv_name = name + '_conv'
+        bn_name = name + '_bn'
+    else:
+        up_name = None
+        conv_name = None
+        bn_name = None
+    
+    x = UpSampling2D(size=upsize, name=up_name)(x)
+    x = conv(x, filters, size, strides, padding, conv_name)
+    x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
+    x = Activation(activation, name=name)(x)
+   
     return x
 
 
