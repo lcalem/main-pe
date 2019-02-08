@@ -40,6 +40,30 @@ from tensorflow.keras.layers import UpSampling2D
 # from deephar.activations import channel_softmax_2d
 
 
+def get_names(name, name_types):
+    '''
+    layer custom names, in practice it just adds a suffix
+    c = conv; b = bn; a = act; u = upsampling
+    '''
+    type_suffixes = {
+        'a': '_act',
+        'b': '_bn',
+        'c': '_conv',
+        'u': '_up'
+    }
+    names = [None] * len(name_types)
+    
+    if name is not None:
+        for i, ntype in enumerate(name_types):
+            assert ntype in type_suffixes, 'Bad layer type %s' % ntype
+            names[i] = name + type_suffixes[ntype]
+        
+    # trick to avoid accidental tuples
+    if len(name_types) == 1:
+        return names[0]
+    
+    return tuple(names)
+
 
 def conv(x, filters, size, strides=(1, 1), padding='same', name=None):
     x = Conv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=name)(x)
@@ -47,20 +71,13 @@ def conv(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 
 def up(x, upsize=(2, 2), name=None):
-    up_name = name + '_up' if name else None
+    up_name, = get_names(name, 'u')
     x = UpSampling2D(size=upsize, name=up_name)(x)
     return x
 
 
 def upconv_bn_act(x, filters, size, upsize=(2, 2), strides=(1, 1), padding='same', activation='relu', name=None):
-    if name is not None:
-        up_name = name + '_up'
-        conv_name = name + '_conv'
-        bn_name = name + '_bn'
-    else:
-        up_name = None
-        conv_name = None
-        bn_name = None
+    up_name, conv_name, bn_name = get_names(name, 'ucb')
     
     x = UpSampling2D(size=upsize, name=up_name)(x)
     x = conv(x, filters, size, strides, padding, conv_name)
@@ -71,16 +88,12 @@ def upconv_bn_act(x, filters, size, upsize=(2, 2), strides=(1, 1), padding='same
 
 
 def deconv(x, filters, size, strides=(1, 1), padding='same', name=None):
-    x = Conv2DTranspose(filters, size, strides=strides, padding=padding,
-            data_format=K.image_data_format(), use_bias=False, name=name)(x)
+    x = Conv2DTranspose(filters, size, strides=strides, padding=padding, data_format=K.image_data_format(), use_bias=False, name=name)(x)
     return x
 
 
 def conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-    else:
-        conv_name = None
+    conv_name = get_names(name, 'c')
 
     x = conv(x, filters, size, strides, padding, conv_name)
     x = BatchNormalization(axis=-1, scale=False, name=name)(x)
@@ -88,23 +101,15 @@ def conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 
 def conv_act(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-    else:
-        conv_name = None
-
+    conv_name = get_names(name, 'c')
+    
     x = conv(x, filters, size, strides, padding, conv_name)
     x = Activation('relu', name=name)(x)
     return x
 
 
 def conv_bn_act(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-        bn_name = name + '_bn'
-    else:
-        conv_name = None
-        bn_name = None
+    conv_name, bn_name = get_names(name, 'cb')
 
     x = conv(x, filters, size, strides, padding, conv_name)
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
@@ -113,12 +118,7 @@ def conv_bn_act(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 
 def bn_act_conv(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        bn_name = name + '_bn'
-        act_name = name + '_act'
-    else:
-        bn_name = None
-        act_name = None
+    act_name, bn_name = get_names(name, 'ab')
 
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
     x = Activation('relu', name=act_name)(x)
@@ -127,12 +127,7 @@ def bn_act_conv(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 
 def act_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-        act_name = name + '_act'
-    else:
-        conv_name = None
-        act_name = None
+    conv_name, act_name = get_names(name, 'ca')
 
     x = Activation('relu', name=act_name)(x)
     x = conv(x, filters, size, strides, padding, conv_name)
@@ -140,44 +135,27 @@ def act_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
     return x
 
 
-def separable_conv_bn_act(x, filters, size, strides=(1, 1), padding='same',
-        name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-        bn_name = name + '_bn'
-    else:
-        conv_name = None
-        bn_name = None
+def separable_conv_bn_act(x, filters, size, strides=(1, 1), padding='same', name=None):
+    conv_name, bn_name = get_names(name, 'cb')
 
-    x = SeparableConv2D(filters, size, strides=strides, padding=padding,
-            use_bias=False, name=conv_name)(x)
+    x = SeparableConv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=conv_name)(x)
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
     x = Activation('relu', name=name)(x)
     return x
 
 
-def separable_act_conv_bn(x, filters, size, strides=(1, 1), padding='same',
-        name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-        act_name = name + '_act'
-    else:
-        conv_name = None
-        act_name = None
-
+def separable_act_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
+    conv_name, act_name = get_names(name, 'ca')
+    
+    print("SEPCONV FILTERS %s %s, SIZE %s %s" % (type(filters), str(filters), type(size), str(size)))
     x = Activation('relu', name=act_name)(x)
-    x = SeparableConv2D(filters, size, strides=strides, padding=padding,
-            use_bias=False, name=conv_name)(x)
+    x = SeparableConv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=conv_name)(x)
     x = BatchNormalization(axis=-1, scale=False, name=name)(x)
     return x
 
 
-def separable_conv_bn(x, filters, size, strides=(1, 1), padding='same',
-        name=None):
-    if name is not None:
-        conv_name = name + '_conv'
-    else:
-        conv_name = None
+def separable_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
+    conv_name = get_names(name, 'c')
 
     x = SeparableConv2D(filters, size, strides=strides, padding=padding,
             use_bias=False, name=conv_name)(x)
@@ -205,24 +183,14 @@ def sepconv_residual(x, out_size, name, kernel_size=(3, 3)):
 
 
 def act_conv(x, filters, size, strides=(1, 1), padding='same', name=None):
-    if name is not None:
-        act_name = name + '_act'
-    else:
-        act_name = None
+    act_name = get_names(name, 'a')
 
     x = Activation('relu', name=act_name)(x)
     x = conv(x, filters, size, strides, padding, name)
     return x
 
-def bn_act_conv3d(x, filters, size, strides=(1, 1, 1), padding='same',
-        name=None):
-
-    if name is not None:
-        bn_name = name + '_bn'
-        act_name = name + '_act'
-    else:
-        bn_name = None
-        act_name = None
+def bn_act_conv3d(x, filters, size, strides=(1, 1, 1), padding='same', name=None):
+    act_name, bn_name = get_names(name, 'ab')
 
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
     x = Activation('relu', name=act_name)(x)
@@ -237,12 +205,7 @@ def dense(x, filters, name=None):
 
 
 def bn_act_dense(x, filters, name=None):
-    if name is not None:
-        bn_name = name + '_bn'
-        act_name = name + '_act'
-    else:
-        bn_name = None
-        act_name = None
+    act_name, bn_name = get_names(name, 'ab')
 
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
     x = Activation('relu', name=act_name)(x)
@@ -314,21 +277,21 @@ def max_min_pooling(x, strides=(2, 2), padding='same', name=None):
 
     return Lambda(_max_plus_min, name=name)(x)
 
-def global_max_min_pooling(x, name=None):
-    if 'global_max_min_pool_cnt' not in globals():
-        global global_max_min_pool_cnt
-        global_max_min_pool_cnt = 0
-
-    if name is None:
-        name = 'GlobalMaxMinPooling2D_%d' % global_max_min_pool_cnt
-        global_max_min_pool_cnt += 1
-
-    def _global_max_plus_min(x):
-        x1 = GlobalMaxPooling2D()(x)
-        x2 = GlobalMaxPooling2D()(-x)
-        return x1 - x2
-
-    return Lambda(_global_max_plus_min, name=name)(x)
+# def global_max_min_pooling(x, name=None):
+#     if 'global_max_min_pool_cnt' not in globals():
+#         global global_max_min_pool_cnt
+#         global_max_min_pool_cnt = 0
+# 
+#     if name is None:
+#         name = 'GlobalMaxMinPooling2D_%d' % global_max_min_pool_cnt
+#         global_max_min_pool_cnt += 1
+# 
+#     def _global_max_plus_min(x):
+#         x1 = GlobalMaxPooling2D()(x)
+#         x2 = GlobalMaxPooling2D()(-x)
+#         return x1 - x2
+# 
+#     return Lambda(_global_max_plus_min, name=name)(x)
 
 
 def kl_divergence_regularizer(x, rho=0.01):
@@ -365,8 +328,9 @@ def kl_divergence_regularizer(x, rho=0.01):
 
 
 def kronecker_prod(h, f, name='Kronecker_prod'):
-    """ # Inputs: inp[0] (heatmaps) and inp[1] (visual features)
-    """
+    '''
+    # Inputs: inp[0] (heatmaps) and inp[1] (visual features)
+    '''
     inp = [h, f]
     def _combine_heatmaps_visual(inp):
         hm = inp[0]

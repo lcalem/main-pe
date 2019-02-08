@@ -1,5 +1,6 @@
 import os
 
+from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import Callback
 
 
@@ -17,4 +18,4 @@ class SaveModel(Callback):
         if self.verbose:
             print('Saving model @epoch=%05d to %s' % (epoch + 1, filename))
 
-        self.model.save_weights(filename)
+        save_model(self.model, filename)
