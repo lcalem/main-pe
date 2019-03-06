@@ -32,12 +32,15 @@ from tensorflow.keras.layers import ZeroPadding2D
 
 from tensorflow.keras.layers import UpSampling2D
 
+import tensorflow.keras.backend as K
+
 # from keras.constraints import unit_norm
 # from keras.regularizers import l1
 
-# from deephar.utils.math import linspace_2d
-# from deephar.activations import channel_softmax_1d
-# from deephar.activations import channel_softmax_2d
+from model.activations import channel_softmax_1d
+from model.activations import channel_softmax_2d
+
+from model.utils import math
 
 
 def get_names(name, name_types):
@@ -147,7 +150,6 @@ def separable_conv_bn_act(x, filters, size, strides=(1, 1), padding='same', name
 def separable_act_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
     conv_name, act_name = get_names(name, 'ca')
     
-    print("SEPCONV FILTERS %s %s, SIZE %s %s" % (type(filters), str(filters), type(size), str(size)))
     x = Activation('relu', name=act_name)(x)
     x = SeparableConv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=conv_name)(x)
     x = BatchNormalization(axis=-1, scale=False, name=name)(x)
@@ -374,14 +376,14 @@ def lin_interpolation_1d(inp):
 
 def lin_interpolation_2d(inp, dim):
 
-    num_rows, num_cols, num_filters = K.int_shape(inp)[1:]
+    num_rows, num_cols, num_filters = inp.get_shape().as_list()[1:]
     conv = SeparableConv2D(num_filters, (num_rows, num_cols), use_bias=False)
     x = conv(inp)
 
     w = conv.get_weights()
     w[0].fill(0)
     w[1].fill(0)
-    linspace = linspace_2d(num_rows, num_cols, dim=dim)
+    linspace = math.linspace_2d(num_rows, num_cols, dim=dim)
 
     for i in range(num_filters):
         w[0][:,:, i, 0] = linspace[:,:]
