@@ -13,7 +13,7 @@ from model import config
 from model.networks.multi_branch_model import MultiBranchModel
 
 
-def launch_training(dataset_path, model_folder, n_epochs):
+def launch_training(dataset_path, model_folder, n_epochs, batch_size):
 
     mpii_path = dataset_path
     mpii = MpiiSinglePerson(mpii_path, dataconf=config.mpii_dataconf)
@@ -22,7 +22,7 @@ def launch_training(dataset_path, model_folder, n_epochs):
                                ['frame'],
                                ['frame', 'pose', 'pose', 'pose', 'pose'],
                                TRAIN_MODE,
-                               batch_size=20,
+                               batch_size=16,
                                shuffle=False)
 
     model = MultiBranchModel(nb_pose_blocks=4)
@@ -31,13 +31,14 @@ def launch_training(dataset_path, model_folder, n_epochs):
     model.train(data_tr_mpii, steps_per_epoch=len(data_tr_mpii), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 separate_mpii.py --dataset_path '/share/DEEPLEARNING/datasets/mpii' --dataset_name 'mpii' --model_name 'separate' --n_epochs 60 --gpu 0
+# python3 separate_mpii.py --dataset_path '/share/DEEPLEARNING/datasets/mpii' --dataset_name 'mpii' --model_name 'separate' --n_epochs 60 --batch_size 16 --gpu 0
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)
     parser.add_argument("--dataset_name", required=True)
     parser.add_argument("--model_name", required=True)
     parser.add_argument("--n_epochs", required=True)
+    parser.add_argument("--batch_size", required=True)
     parser.add_argument("--gpu", required=True)
     args = parser.parse_args()
 
@@ -47,4 +48,4 @@ if __name__ == '__main__':
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
-    launch_training(args.dataset_path, model_folder, int(args.n_epochs))
+    launch_training(args.dataset_path, model_folder, int(args.n_epochs), args.batch_size)
