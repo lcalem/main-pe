@@ -14,4 +14,5 @@ def linspace_2d(nb_rols, nb_cols, dim=0):
 
     if dim == 1:
         return (_lin_sp_aux(nb_rols, nb_cols, 0.0, 1.0)).T
+    
     return _lin_sp_aux(nb_cols, nb_rols, 0.0, 1.0)

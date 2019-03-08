@@ -74,7 +74,7 @@ def conv(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 
 def up(x, upsize=(2, 2), name=None):
-    up_name, = get_names(name, 'u')
+    up_name = get_names(name, 'u')
     x = UpSampling2D(size=upsize, name=up_name)(x)
     return x
 
