@@ -55,16 +55,16 @@ def get_names(name, name_types):
         'u': '_up'
     }
     names = [None] * len(name_types)
-    
+
     if name is not None:
         for i, ntype in enumerate(name_types):
             assert ntype in type_suffixes, 'Bad layer type %s' % ntype
             names[i] = name + type_suffixes[ntype]
-        
+
     # trick to avoid accidental tuples
     if len(name_types) == 1:
         return names[0]
-    
+
     return tuple(names)
 
 
@@ -81,12 +81,12 @@ def up(x, upsize=(2, 2), name=None):
 
 def upconv_bn_act(x, filters, size, upsize=(2, 2), strides=(1, 1), padding='same', activation='relu', name=None):
     up_name, conv_name, bn_name = get_names(name, 'ucb')
-    
+
     x = UpSampling2D(size=upsize, name=up_name)(x)
     x = conv(x, filters, size, strides, padding, conv_name)
     x = BatchNormalization(axis=-1, scale=False, name=bn_name)(x)
     x = Activation(activation, name=name)(x)
-   
+
     return x
 
 
@@ -105,7 +105,7 @@ def conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
 
 def conv_act(x, filters, size, strides=(1, 1), padding='same', name=None):
     conv_name = get_names(name, 'c')
-    
+
     x = conv(x, filters, size, strides, padding, conv_name)
     x = Activation('relu', name=name)(x)
     return x
@@ -149,7 +149,7 @@ def separable_conv_bn_act(x, filters, size, strides=(1, 1), padding='same', name
 
 def separable_act_conv_bn(x, filters, size, strides=(1, 1), padding='same', name=None):
     conv_name, act_name = get_names(name, 'ca')
-    
+
     x = Activation('relu', name=act_name)(x)
     x = SeparableConv2D(filters, size, strides=strides, padding=padding, use_bias=False, name=conv_name)(x)
     x = BatchNormalization(axis=-1, scale=False, name=name)(x)
@@ -283,16 +283,16 @@ def max_min_pooling(x, strides=(2, 2), padding='same', name=None):
 #     if 'global_max_min_pool_cnt' not in globals():
 #         global global_max_min_pool_cnt
 #         global_max_min_pool_cnt = 0
-# 
+#
 #     if name is None:
 #         name = 'GlobalMaxMinPooling2D_%d' % global_max_min_pool_cnt
 #         global_max_min_pool_cnt += 1
-# 
+#
 #     def _global_max_plus_min(x):
 #         x1 = GlobalMaxPooling2D()(x)
 #         x2 = GlobalMaxPooling2D()(-x)
 #         return x1 - x2
-# 
+#
 #     return Lambda(_global_max_plus_min, name=name)(x)
 
 
@@ -374,6 +374,7 @@ def lin_interpolation_1d(inp):
 
     return x
 
+
 def lin_interpolation_2d(inp, dim):
 
     num_rows, num_cols, num_filters = inp.get_shape().as_list()[1:]
@@ -397,4 +398,3 @@ def lin_interpolation_2d(inp, dim):
     x = Lambda(lambda x: K.expand_dims(x, axis=-1))(x)
 
     return x
-
