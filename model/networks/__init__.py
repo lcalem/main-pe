@@ -13,8 +13,8 @@ class BaseModel(object):
         self.input_shape = (256, 256, 3)
         self.start_lr = 0.001
 
-    def load(self, checkpoint_path):
-        self.model = load_model(checkpoint_path)
+    def load(self, checkpoint_path, custom_objects=None):
+        self.model = load_model(checkpoint_path, custom_objects=custom_objects)
 
     def build(self):
         raise NotImplementedError
@@ -33,6 +33,9 @@ class BaseModel(object):
                                  callbacks=cb_list,
                                  workers=4,
                                  initial_epoch=0)
+        
+    def predict(self, data):
+        return self.model.predict(data)
 
     def evaluation(self, data_eval):
         pass
