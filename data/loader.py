@@ -75,7 +75,7 @@ class BatchLoader(Sequence):
             self.qkey = []
             self.lock = []
             for i_dataset in range(self.num_datasets):
-                maxsize = self.datasets[d].get_length(self.mode) + BatchLoader.BATCH_HOLD * self.batch_sizes[i_dataset]
+                maxsize = self.datasets[i_dataset].get_length(self.mode) + BatchLoader.BATCH_HOLD * self.batch_sizes[i_dataset]
                 self.qkey.append(Queue(maxsize=maxsize))
                 self.lock.append(threading.Lock())
 

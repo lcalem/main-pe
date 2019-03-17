@@ -6,6 +6,7 @@ from PIL import Image
 
 from data.utils import bbox
 from data.utils import transform
+from data.utils.camera import Camera
 from data.utils.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE, get_visible_joints
 
 from model.utils import pose_format
@@ -147,7 +148,7 @@ class Human36M(object):
 
         for i in range(len(objframes)):
             image = 'images/%s/%05d.jpg' % (seq.name, objframes[i].f)
-            imgt = T(Image.open(os.path.join(self.dataset_path, image)))
+            imgt = transform.ImageTransform(Image.open(os.path.join(self.dataset_path, image)))
 
             imgt.rotate_crop(dconf['angle'], objpos, winsize)
             if dconf['hflip'] == 1:
