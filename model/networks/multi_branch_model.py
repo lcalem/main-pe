@@ -21,7 +21,10 @@ class MultiBranchModel(BaseModel):
     One common decoder to recreate the image
     '''
 
-    def __init__(self, n_joints=16, nb_pose_blocks=8, reception_kernel_size=(5, 5)):
+    def __init__(self, dim, n_joints=16, nb_pose_blocks=8, reception_kernel_size=(5, 5)):
+        assert dim in [2, 3], 'Cannot work outside of 2D or 3D'
+        
+        self.dim = dim
         self.n_joints = n_joints
         self.n_blocks = nb_pose_blocks
         self.reception_kernel_size = reception_kernel_size
@@ -76,7 +79,7 @@ class MultiBranchModel(BaseModel):
         input: 256 x 256 x 3
         output: [] x 8
         '''
-        pose_model = PoseModel(inp, self.n_joints, self.n_blocks, self.reception_kernel_size).model
+        pose_model = PoseModel(inp, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
         out = pose_model.output
 
         return out

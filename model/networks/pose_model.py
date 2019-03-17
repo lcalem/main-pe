@@ -2,20 +2,31 @@ import tensorflow as tf
 
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import add, concatenate
-from tensorflow.keras.layers import Activation, Lambda, MaxPooling2D, UpSampling2D
+from tensorflow.keras.layers import Activation, GlobalMaxPooling1D, GlobalMaxPooling2D, Lambda, MaxPooling2D, UpSampling2D
 
 from model import blocks
 from model import layers
 
 
+DEPTH_MAPS = 16
+
+
 class PoseModel(object):
 
-    def __init__(self, input_tensor, n_joints, n_blocks, kernel_size):
+    def __init__(self, dim, input_tensor, n_joints, n_blocks, kernel_size):
+        self.dim = dim
+        
         self.n_joints = n_joints
         self.n_blocks = n_blocks
         self.kernel_size = kernel_size
 
-        self.n_heatmaps = self.n_joints   # this seems silly but we will augment with context later
+        if dim == 2:
+            self.n_heatmaps = self.n_joints
+        elif dim == 3:
+            self.depth_maps = 16
+            self.n_heatmaps = self.depth_maps * self.n_joints
+        else:
+            raise Exception('Dim can only be 2 or 3')
 
         self.build(input_tensor)
 
@@ -38,6 +49,7 @@ class PoseModel(object):
         pose_input_shape = (num_rows, num_cols, self.n_joints)   # (32, 32, 16)
         self.pose_softargmax_model = self.build_softargmax_model(pose_input_shape)
         self.joint_visibility_model = self.build_visibility_model(pose_input_shape)
+        self.pose_depth_model = self.build_depth_model()   # will be None for dim 2
 
         # hourglass blocks
         for i_block in range(self.n_blocks):
@@ -49,7 +61,7 @@ class PoseModel(object):
             x = self.sepconv_block(x, name='SepConv%d' % (i_block + 1))
             h = self.pose_block(x, name='RegMap%d' % (i_block + 1))
 
-            pose, visible = self.pose_regression_2d(h, name='PoseReg%s' % (i_block + 1))
+            pose, visible = self.pose_regression(h, name='PoseReg%s' % (i_block + 1))
             pose_vis = concatenate([pose, visible], axis=-1)
             print("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
 
@@ -129,6 +141,23 @@ class PoseModel(object):
         x = Lambda(lambda x: tf.expand_dims(x, axis=-1))(x)
 
         model = Model(inputs=inp, outputs=x)
+
+        return model
+    
+    def build_depth_model(self):
+        '''
+        Static model (1D soft argmax on z axis)
+        Only for dim 3
+        '''
+        samz_input_shape = (self.depth_maps, self.n_joints)
+        name_sm = 'zSAM_softmax'
+
+        inp = Input(shape=input_shape)
+        x = layers.act_depth_softmax(inp, name=name_sm)
+        x = layers.lin_interpolation_1d(x)
+
+        model = Model(inputs=inp, outputs=x, name=name)
+        model.trainable = False
 
         return model
 
@@ -213,6 +242,14 @@ class PoseModel(object):
         model = Model(inputs=xi, outputs=x, name=name)
 
         return model(inp)
+    
+    def pose_regression(self, heatmaps, name):
+        if self.dim == 2:
+            return self.pose_regression_2d(heatmaps, name)
+        elif self.dim == 3:
+            return self.pose_regression_3d(heatmaps, name)
+        else:
+            raise Exception('This should not happen so far in the model')
 
     def pose_regression_2d(self, heatmaps, name):
         '''
@@ -228,6 +265,46 @@ class PoseModel(object):
         visibility = self.joint_visibility_model(heatmaps)
 
         return pose, visibility
+    
+    def pose_regression_3d(self, heatmaps, name):
+        '''
+        
+        input: 32 x 32 x 17*16 (njoints (17) times depth maps)
+        output:
+        - pose (None, 17, 3)
+        - visibility (None, 17, 1)
+        '''
+        assert heatmaps.get_shape().as_list()[-1] == depth_maps * num_joints  # the number of heatmaps
+
+        def _reshape_heatmaps(x):
+            x = tf.expand_dims(x, axis=-1)
+            shape = x.get_shape().as_list()
+            x = tf.reshape(x, (-1, shape[1], shape[2], depth_maps, num_joints))
+
+            return x
+
+        # separate heatmaps into 2D x-y heatmaps and depth z heatmaps
+        h = Lambda(_reshape_heatmaps)(h)
+        hxy = Lambda(lambda x: tf.reduce_mean(x, axis=3))(h)
+        hz = Lambda(lambda x: tf.reduce_mean(x, axis=(1, 2)))(h)
+        # hxy = Lambda(lambda x: K.max(x, axis=3))(h)
+        # hz = Lambda(lambda x: K.max(x, axis=(1, 2)))(h)
+
+        # hxy_s = act_channel_softmax(hxy)
+        # hz_s = act_depth_softmax(hz)
+
+        # x-y are taken in the same pose soft argmax model as regular heatmaps
+        pose_xy = self.pose_softargmax_model(hxy)
+        pose_z = self.pose_depth_model(hz)
+        pose = concatenate([pxy, pz])
+
+        vxy = GlobalMaxPooling2D()(hxy)
+        vz = GlobalMaxPooling1D()(hz)
+        v = add([vxy, vz])
+        v = Lambda(lambda x: tf.expand_dims(x, axis=-1))(v)
+        visible = Activation('sigmoid')(v)
+
+        return pose, visible
 
     def fremap_block(self, inp, num_filters, name=None):
         input_shape = inp.get_shape().as_list()[1:]
