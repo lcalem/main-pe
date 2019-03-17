@@ -13,7 +13,7 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, dim, input_tensor, n_joints, n_blocks, kernel_size):
+    def __init__(self, input_tensor, dim, n_joints, n_blocks, kernel_size):
         self.dim = dim
         
         self.n_joints = n_joints
@@ -26,7 +26,7 @@ class PoseModel(object):
             self.depth_maps = 16
             self.n_heatmaps = self.depth_maps * self.n_joints
         else:
-            raise Exception('Dim can only be 2 or 3')
+            raise Exception('Dim can only be 2 or 3 (was %s)' % dim)
 
         self.build(input_tensor)
 
@@ -149,14 +149,14 @@ class PoseModel(object):
         Static model (1D soft argmax on z axis)
         Only for dim 3
         '''
-        samz_input_shape = (self.depth_maps, self.n_joints)
+        input_shape = (self.depth_maps, self.n_joints)
         name_sm = 'zSAM_softmax'
 
         inp = Input(shape=input_shape)
         x = layers.act_depth_softmax(inp, name=name_sm)
         x = layers.lin_interpolation_1d(x)
 
-        model = Model(inputs=inp, outputs=x, name=name)
+        model = Model(inputs=inp, outputs=x, name=name_sm)
         model.trainable = False
 
         return model
@@ -274,17 +274,17 @@ class PoseModel(object):
         - pose (None, 17, 3)
         - visibility (None, 17, 1)
         '''
-        assert heatmaps.get_shape().as_list()[-1] == depth_maps * num_joints  # the number of heatmaps
+        assert heatmaps.get_shape().as_list()[-1] == self.depth_maps * self.n_joints  # the number of heatmaps
 
         def _reshape_heatmaps(x):
             x = tf.expand_dims(x, axis=-1)
             shape = x.get_shape().as_list()
-            x = tf.reshape(x, (-1, shape[1], shape[2], depth_maps, num_joints))
+            x = tf.reshape(x, (-1, shape[1], shape[2], self.depth_maps, self.n_joints))
 
             return x
 
         # separate heatmaps into 2D x-y heatmaps and depth z heatmaps
-        h = Lambda(_reshape_heatmaps)(h)
+        h = Lambda(_reshape_heatmaps)(heatmaps)
         hxy = Lambda(lambda x: tf.reduce_mean(x, axis=3))(h)
         hz = Lambda(lambda x: tf.reduce_mean(x, axis=(1, 2)))(h)
         # hxy = Lambda(lambda x: K.max(x, axis=3))(h)
@@ -296,7 +296,7 @@ class PoseModel(object):
         # x-y are taken in the same pose soft argmax model as regular heatmaps
         pose_xy = self.pose_softargmax_model(hxy)
         pose_z = self.pose_depth_model(hz)
-        pose = concatenate([pxy, pz])
+        pose = concatenate([pose_xy, pose_z])
 
         vxy = GlobalMaxPooling2D()(hxy)
         vz = GlobalMaxPooling1D()(hz)

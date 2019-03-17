@@ -61,6 +61,20 @@ class MultiBranchModel(BaseModel):
         # loss = mean_squared_error
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
+        
+    def build_pose_only(self):
+        '''
+        Only the pose branch will be built and activated, no concat, no decoder
+        -> for baselines and ablation study
+        '''
+        inp = Input(shape=self.input_shape)
+        z_p = self.pose_encoder(inp)
+        
+        self.model = Model(inputs=inp, outputs=z_p)
+        
+        ploss = [pose_loss()] * len(z_p)
+        self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
+        self.model.summary()
 
     def appearance_encoder(self, inp):
         '''
