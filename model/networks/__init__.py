@@ -15,15 +15,14 @@ class BaseModel(object):
 
     def load(self, checkpoint_path, custom_objects=None):
         self.model = load_model(checkpoint_path, custom_objects=custom_objects)
-
+        
     def build(self):
         raise NotImplementedError
 
     def train(self, data_tr, steps_per_epoch, model_folder, n_epochs):
-        weights_file = os.path.join(model_folder, 'appearance_mpii_{epoch:03d}.h5')
 
         cb_list = []
-        cb_list.append(callbacks.SaveModel(weights_file))
+        cb_list.append(callbacks.SaveModel(model_folder))
         # callbacks.append(LearningRateScheduler(lr_scheduler))
         # callbacks.append(eval_callback)
 

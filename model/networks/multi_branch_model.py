@@ -30,6 +30,13 @@ class MultiBranchModel(BaseModel):
         self.reception_kernel_size = reception_kernel_size
 
         BaseModel.__init__(self)
+        
+    def load_weights(self, weights_path, pose_only=False):
+        if pose_only:
+            self.build_pose_only()
+        else:
+            self.build()
+        self.model.load_weights(weights_path)
 
     def build(self):
         inp = Input(shape=self.input_shape)
