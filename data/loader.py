@@ -35,6 +35,7 @@ class BatchLoader(Sequence):
         num_predictions: number of predictions (y) that should be repeated for training.
         mode: TRAIN_MODE, TEST_MODE, or VALID_MODE.
         shuffle: boolean to shuffle *samples* (not batches!) or not.
+        max_length: to limit the number of data in an epoch
     '''
     BATCH_HOLD = 1
 
@@ -62,7 +63,7 @@ class BatchLoader(Sequence):
 
         self.batch_sizes = batch_size
         if not isinstance(self.batch_sizes, list):
-            self.batch_sizes = len(self.datasets)*[self.batch_sizes]
+            self.batch_sizes = len(self.datasets) * [self.batch_sizes]
 
         assert len(self.datasets) == len(self.batch_sizes), 'dataset and batch_size should be lists with the same length'
 
@@ -85,8 +86,7 @@ class BatchLoader(Sequence):
         '''
         dataset_len = []
         for d in range(self.num_datasets):
-            dataset_len.append(
-                    int(np.ceil(self.datasets[d].get_length(self.mode) / float(self.batch_sizes[d]))))
+            dataset_len.append(int(np.ceil(self.datasets[d].get_length(self.mode) / float(self.batch_sizes[d]))))
 
         return max(dataset_len)
 

@@ -9,6 +9,8 @@ from data.datasets.h36m import Human36M
 from data.utils.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE
 from data.loader import BatchLoader
 
+from experiments.common import exp_init
+
 from model import config
 from model.networks.multi_branch_model import MultiBranchModel
 from model.utils import pose_format
@@ -45,10 +47,8 @@ if __name__ == '__main__':
     parser.add_argument("--gpu", required=True)
     args = parser.parse_args()
 
-    model_folder = '/home/caleml/pe_experiments/exp_%s_%s_%s' % (args.model_name, args.dataset_name, datetime.datetime.now().strftime("%Y%m%d%H%M"))
-    os.makedirs(model_folder)
-    print("Conducting experiment for %s epochs and %s blocks in folder %s" % (args.n_epochs, args.pose_blocks, model_folder))
-
+    exp_init(args)
+    
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     launch_training(args.dataset_path, model_folder, args.n_epochs, args.batch_size, args.pose_blocks)
