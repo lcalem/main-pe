@@ -52,7 +52,6 @@ def elastic_bce(y_true, y_pred):
     #print("Shape sum %s" % tmp_sum.shape)
     #num_joints = tf.clip_by_value(tmp_sum, 1, None)
     num_joints = y_pred.get_shape().as_list()[1]
-    print("Num joints %s" % num_joints)
 
     l1 = tf.math.abs(y_pred - y_true)
     l2 = tf.math.square(y_pred - y_true)
@@ -80,7 +79,6 @@ def reconstruction_loss():
         print("rec y_true shape %s" % (str(y_true.shape)))
         print("rec y_pred shape %s" % (str(y_pred.shape)))
         num_joints = y_pred.get_shape().as_list()[-1]
-        print("Num joints: %s" % num_joints)
 
         rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_joints
         return rec_loss

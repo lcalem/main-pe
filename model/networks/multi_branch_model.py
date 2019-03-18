@@ -3,6 +3,7 @@ import time
 from tensorflow.keras import Model, Input
 
 from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.layers import concatenate
 from tensorflow.keras.optimizers import RMSprop
 
 from model.losses import pose_loss
@@ -45,24 +46,26 @@ class MultiBranchModel(BaseModel):
         time_1 = time.time()
         z_a = self.appearance_encoder(inp)
         time_2 = time.time()
-        z_p = self.pose_encoder(inp)
+        pose_outputs = self.pose_encoder(inp)
         time_3 = time.time()
 
         print("Build E_a %s, build E_p %s" % (time_2 - time_1, time_3 - time_2))
-        print(type(z_a), type(z_p))
-        print("Shape z_a %s" % str(z_a.shape))
+        
+        poses, z_p = self.check_pose_output(pose_outputs)
+        print("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
 
         # decoder
         concat = self.concat(z_a, z_p)
         print("Shape concat %s" % str(concat.shape))
+        assert concat.shape.as_list() == [None, 16, 16, 2048], 'wrong concat shape %s' % str(concat.shape)
         i_hat = self.decoder(concat)
 
         outputs = [i_hat]
-        outputs.extend(z_p)
+        outputs.extend(poses)
         self.model = Model(inputs=inp, outputs=outputs)
         print("Outputs shape %s" % self.model.output_shape)
 
-        ploss = [pose_loss()] * len(z_p)
+        ploss = [pose_loss()] * len(poses)
         losses = [reconstruction_loss()]
         losses.extend(ploss)
         # loss = mean_squared_error
@@ -87,40 +90,60 @@ class MultiBranchModel(BaseModel):
         '''
         resnet50 for now
         input: 256 x 256 x 3
-        output: 8 x 8 x 2048
+        output: 16 x 16 x 1024
         '''
         enc_model = ResNet50(include_top=False, weights='imagenet', input_tensor=inp)
-
-        z_a = enc_model.output   # 8 x 8 x 2048
+        output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 1024 activation we want, before the last resnet block
+        assert output_layer.name.startswith('activation')
+        
+        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
+        z_a = partial_model.output # 16 x 16 x 1024
+        assert z_a.shape.as_list() == [None, 16, 16, 1024], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
+        
         return z_a
 
     def pose_encoder(self, inp):
         '''
         reception / stacked hourglass
         input: 256 x 256 x 3
-        output: [] x 8
+        output: [(n_joints, dim + 1) * n_blocks, (16, 16, 1024)]
         '''
         pose_model = PoseModel(inp, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
         out = pose_model.output
 
         return out
+    
+    def check_pose_output(self, pose_outputs):
+        '''
+        pose_outputs should be a list of poses + z_p
+        '''
+        assert len(pose_outputs) == self.n_blocks + 1
+        poses = pose_outputs[:-1]
+        z_p = pose_outputs[-1]
+        
+        pose_shapes = [pose.shape.as_list() for pose in poses]
+        assert all([shape == [None, self.n_joints, self.dim + 1] for shape in pose_shapes]), 'pose shapes are weird %s' % str(pose_shapes)
+        assert z_p.shape.as_list() == [None, 16, 16, 1024], 'z_p shape not as expected %s' % str(z_p.shape.as_list())
+        
+        return poses, z_p
 
     def concat(self, z_a, z_p):
         '''
         concat pose and appearance representations before decoding
         input:
-            - z_p:
-            - z_a: 8 x 8 x 2048
+            - z_p: 16 x 16 x 1024
+            - z_a: 16 x 16 x 1024
         output:
 
         TODO: This is where the real work should happen
         '''
-        return z_a
+        concat = concatenate([z_a, z_p])
+        return concat
 
     def decoder(self, concat):
         '''
         from concatenated representations to image reconstruction
-        input: 8 x 8 x 2048 (z_a)
+        input: 16 x 16 x 2048 (z_a and z_p concatenated)
         output: 256 x 256 x 3
         '''
         decoder_model = DecoderModel(input_tensor=concat).model

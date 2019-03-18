@@ -15,15 +15,13 @@ class DecoderModel(object):
         return self._model
 
     def build(self, inp):
-        z_a = Input(shape=inp.get_shape().as_list()[1:])  # for now, only the z_a part (8 x 8 x 2048)
+        '''
+        input: concat of z_a and z_p -> 16 x 16 x 2048
+        '''
+        z_a = Input(shape=inp.get_shape().as_list()[1:])
 
-        up = layers.up(z_a)  # 16 x 16
-        up = layers.conv_bn_act(up, 512, (3, 3))
-        up = layers.conv_bn_act(up, 512, (3, 3))
-        up = layers.conv_bn_act(up, 512, (3, 3))
-
-        up = layers.up(up)  # 32 x 32
-        up = layers.conv_bn_act(up, 512, (3, 3))
+        up = layers.up(z_a)  # 32 x 32
+        up = layers.conv_bn_act(up, 1024, (3, 3))
         up = layers.conv_bn_act(up, 512, (3, 3))
         up = layers.conv_bn_act(up, 256, (3, 3))
 

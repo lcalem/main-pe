@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument("--gpu", required=True)
     args = parser.parse_args()
 
-    exp_init(args)
+    model_folder = exp_init(vars(args))
     
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 

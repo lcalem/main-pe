@@ -38,6 +38,16 @@ class PoseModel(object):
         '''
         1. stem
         2. stacking the blocks
+        
+        Shapes:
+        input: 256 x 256 x 3
+        outputs: [(n_joints, dim + 1) * n_blocks, (16 x 16 x 1024)]
+        
+        - last element of outputs is z_p (16 x 16 x 1024)
+        - remaining elements are the pose regression (one per block), size (n_joints, dim + 1)
+            - n_joints: 16 (MPII) or 17 (Human 3.6M)
+            - dim + 1: dimension (2 or 3) + 1 for visibility prediction
+            -> (16, 3) or (17, 4)
         '''
 
         outputs = list()
@@ -67,9 +77,15 @@ class PoseModel(object):
 
             outputs.append(pose_vis)
 
-            if i_block < self.n_blocks - 1:
-                h = self.fremap_block(h, block_shape[-1], name='fReMap%d' % (i_block + 1))
-                x = add([identity_map, x, h])
+            # if i_block < self.n_blocks - 1:
+            h = self.fremap_block(h, block_shape[-1], name='fReMap%d' % (i_block + 1))
+            x = add([identity_map, x, h])
+            
+        # z_p from last block
+        print("Last H shape %s" % str(h))
+        z_p = MaxPooling2D((2, 2))(h)
+        z_p = layers.act_conv_bn(z_p, 1024, (1, 1))
+        outputs.append(z_p)
 
         self._model = Model(inputs=inp, outputs=outputs)
 
