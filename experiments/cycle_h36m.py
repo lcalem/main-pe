@@ -12,7 +12,7 @@ from data.loader import BatchLoader
 from experiments.common import exp_init
 
 from model import config
-from model.networks.multi_branch_model import MultiBranchModel
+from model.networks.cycle_model import CycleModel
 from model.utils import pose_format
 
 
@@ -29,13 +29,13 @@ def launch_training(dataset_path, model_folder, n_epochs, batch_size, pose_block
         batch_size=batch_size,
         shuffle=True)
 
-    model = MultiBranchModel(dim=3, n_joints=17, nb_pose_blocks=pose_blocks)
+    model = CycleModel(dim=3, n_joints=17, nb_pose_blocks=pose_blocks)
     model.build()
 
     model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 hybrid_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'hybrid_4b_local' --n_epochs 60 --batch_size 8 --pose_blocks 4 --gpu 3
+# python3 cycle_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'cycle_4b_local' --n_epochs 60 --batch_size 8 --pose_blocks 4 --gpu 3
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)

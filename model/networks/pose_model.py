@@ -13,7 +13,7 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_tensor, dim, n_joints, n_blocks, kernel_size):
+    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size):
         self.dim = dim
         
         self.n_joints = n_joints
@@ -28,13 +28,13 @@ class PoseModel(object):
         else:
             raise Exception('Dim can only be 2 or 3 (was %s)' % dim)
 
-        self.build(input_tensor)
+        self.build(input_shape)
 
     @property
     def model(self):
         return self._model
 
-    def build(self, inp):
+    def build(self, input_shape):
         '''
         1. stem
         2. stacking the blocks
@@ -51,7 +51,7 @@ class PoseModel(object):
         '''
 
         outputs = list()
-        x = self.stem(inp)
+        x = self.stem(input_shape)
 
         # static layers
         num_rows, num_cols, num_filters = x.get_shape().as_list()[1:]
@@ -89,14 +89,14 @@ class PoseModel(object):
 
         self._model = Model(inputs=inp, outputs=outputs)
 
-    def stem(self, inp):
+    def stem(self, input_shape):
         '''
         inception v4 stem
 
         input: 256 x 256 x 3
         output: 32 x 32 x 576
         '''
-        xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
+        xi = Input(shape=input_shape) # 256 x 256 x 3
 
         x = layers.conv_bn_act(xi, 32, (3, 3), strides=(2, 2))
         x = layers.conv_bn_act(x, 32, (3, 3))

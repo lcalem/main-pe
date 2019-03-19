@@ -6,21 +6,22 @@ from model import layers
 
 class DecoderModel(object):
 
-    def __init__(self, input_tensor):
+    def __init__(self, input_shape):
 
-        self.build(input_tensor)
+        self.build(input_shape)
 
     @property
     def model(self):
         return self._model
 
-    def build(self, inp):
+    def build(self, input_shape):
         '''
         input: concat of z_a and z_p -> 16 x 16 x 2048
+        output: reconstructed image 256 x 256 x 3
         '''
-        z_a = Input(shape=inp.get_shape().as_list()[1:])
+        concat = Input(shape=input_shape)
 
-        up = layers.up(z_a)  # 32 x 32
+        up = layers.up(concat)  # 32 x 32
         up = layers.conv_bn_act(up, 1024, (3, 3))
         up = layers.conv_bn_act(up, 512, (3, 3))
         up = layers.conv_bn_act(up, 256, (3, 3))
@@ -43,6 +44,6 @@ class DecoderModel(object):
         # i_hat = Permute((2, 3))(perm)
         i_hat = up
 
-        self._model = Model(inputs=z_a, outputs=i_hat, name='decoder')
+        self._model = Model(inputs=concat, outputs=i_hat, name='decoder')
 
 
