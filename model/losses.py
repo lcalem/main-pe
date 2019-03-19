@@ -64,7 +64,6 @@ def elastic_bce(y_true, y_pred):
 def pose_loss():
 
     def _pose_loss(y_true, y_pred):
-        print("pose y_true shape %s" % (str(y_true.shape)))
         print("pose y_pred shape %s" % (str(y_pred.shape)))
 
         pose_loss = elastic_bce(y_true, y_pred)
@@ -76,7 +75,6 @@ def pose_loss():
 def reconstruction_loss():
 
     def _rec_loss(y_true, y_pred):
-        print("rec y_true shape %s" % (str(y_true.shape)))
         print("rec y_pred shape %s" % (str(y_pred.shape)))
         num_joints = y_pred.get_shape().as_list()[-1]
 
@@ -84,3 +82,35 @@ def reconstruction_loss():
         return rec_loss
 
     return _rec_loss
+
+
+def cycle_loss():
+    '''
+    cycle consistency loss between z representations (should be 16 x 16 x 1024 each)
+    promotes disentangling
+    
+    y_true is phony here because we don't need anything from the dataset
+    y_pred is the concatenation of z_x and z_x' so we need to separate them to build the l2 between them
+    '''
+    
+    def _cycle_loss(y_true, y_pred):
+        print("cycle y_pred shape %s" % (str(y_pred.shape)))
+        z_x = y_pred[:,:,:,:1024]
+        z_x_cycle = y_pred[:,:,:,1024:]
+        print("z_x shape %s, z_x_cycle shape %s" % (str(z_x.shape), str(z_x_cycle.shape)))
+        l2 = tf.math.square(z_x - z_x_cycle)
+        return l2
+    
+    return _cycle_loss
+        
+
+def noop_loss():
+    '''
+    returns 0 no matter what
+    '''
+    
+    def _noop_loss(y_true, y_pred):
+        return tf.math.square(0.0)
+    
+    return _noop_loss
+        

@@ -50,8 +50,10 @@ class PoseModel(object):
             -> (16, 3) or (17, 4)
         '''
 
+        inp = Input(shape=input_shape)
         outputs = list()
-        x = self.stem(input_shape)
+        
+        x = self.stem(inp)
 
         # static layers
         num_rows, num_cols, num_filters = x.get_shape().as_list()[1:]
@@ -89,14 +91,14 @@ class PoseModel(object):
 
         self._model = Model(inputs=inp, outputs=outputs)
 
-    def stem(self, input_shape):
+    def stem(self, inp):
         '''
         inception v4 stem
 
         input: 256 x 256 x 3
         output: 32 x 32 x 576
         '''
-        xi = Input(shape=input_shape) # 256 x 256 x 3
+        xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
 
         x = layers.conv_bn_act(xi, 32, (3, 3), strides=(2, 2))
         x = layers.conv_bn_act(x, 32, (3, 3))

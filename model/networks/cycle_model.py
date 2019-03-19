@@ -1,13 +1,15 @@
 import time
 
+import tensorflow as tf
+
 from tensorflow.keras import Model, Input
 
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import concatenate
+from tensorflow.keras.layers import Lambda
 from tensorflow.keras.optimizers import RMSprop
 
-from model.losses import pose_loss
-from model.losses import reconstruction_loss
+from model.losses import cycle_loss, noop_loss, pose_loss, reconstruction_loss
 
 from model.networks import BaseModel
 from model.networks.decoder_model import DecoderModel
@@ -42,6 +44,15 @@ class CycleModel(BaseModel):
         self.model.load_weights(weights_path)
 
     def build(self):
+        '''
+        Outputs of this model is a ton of things so they can properly be used in losses. 
+        Outputs in order:
+        - first the reconstructed image i_hat (None, 256, 256, 3) -> reconstruction loss
+        - then n_block * pose output (None, n_joints, dim + 1) (+1 for visibility prob) -> pose loss
+        - then the concatenated z_a and z_a' -> cycle consistency loss
+        - then the concatenated z_p and z_p' -> cycle consistency loss
+        - then the intermediate mixed reconstructed images, for viz -> noop loss      
+        '''
         
         # build everything
         time_1 = time.time()
@@ -49,7 +60,7 @@ class CycleModel(BaseModel):
         time_2 = time.time()
         self.pose_model = self.build_pose_model(self.input_shape)
         time_3 = time.time()
-        self.decoder_model = self.build_decoder_model(self.input_shape)
+        self.decoder_model = self.build_decoder_model((16, 16, 2048))  # ...
         time_4 = time.time()
         
         print("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
@@ -78,16 +89,18 @@ class CycleModel(BaseModel):
         cycle_z_a = self.appearance_model(i_hat_mixed)
         cycle_pose_outputs = self.pose_model(i_hat_mixed)
         cycle_poses, cycle_z_p = self.check_pose_output(cycle_pose_outputs)
+        
+        # concat z_a and z_a', z_p and z_p' to have an output usable by the cycle loss
+        concat_z_a = concatenate([z_a, cycle_z_a])
+        concat_z_p = concatenate([z_p, cycle_z_p])
 
         # build the whole model
-        outputs = [i_hat]
-        outputs.extend(poses)
+        outputs = [i_hat] + poses + [concat_z_a] + [concat_z_p] + [i_hat_mixed]
         self.model = Model(inputs=inp, outputs=outputs)
         print("Outputs shape %s" % self.model.output_shape)
 
         ploss = [pose_loss()] * len(poses)
-        losses = [reconstruction_loss()]
-        losses.extend(ploss)
+        losses = [reconstruction_loss()] + ploss + [cycle_loss(), cycle_loss(), noop_loss()]
         # loss = mean_squared_error
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
@@ -152,9 +165,7 @@ class CycleModel(BaseModel):
         input:
             - z_p: 16 x 16 x 1024
             - z_a: 16 x 16 x 1024
-        output:
-
-        TODO: This is where the real work should happen
+        output: 16 x 16 x 2048
         '''
         concat = concatenate([z_a, z_p])
         return concat
@@ -166,4 +177,17 @@ class CycleModel(BaseModel):
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model
+    
+    def shuffle(self, z_a, z_p):
+        '''
+        concat z_a and z_p (as self.concat does) but mixing z_a and z_p so they don't come from the same image
+        input:
+            - z_p: 16 x 16 x 1024
+            - z_a: 16 x 16 x 1024
+        output: 16 x 16 x 2048
+        '''
+        shuffled_z_p = Lambda(lambda x: tf.random.shuffle(x))(z_p)
+        concat = concatenate([z_a, shuffled_z_p])
+        return concat
+        
 
