@@ -13,12 +13,13 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size):
+    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False):
         self.dim = dim
         
         self.n_joints = n_joints
         self.n_blocks = n_blocks
         self.kernel_size = kernel_size
+        self.pose_only = pose_only
 
         if dim == 2:
             self.n_heatmaps = self.n_joints
@@ -58,7 +59,7 @@ class PoseModel(object):
         # static layers
         num_rows, num_cols, num_filters = x.get_shape().as_list()[1:]
         # print("num rows %s, num cols %s, num filters %s" % (num_rows, num_cols, num_filters))
-        pose_input_shape = (num_rows, num_cols, self.n_joints)   # (32, 32, 16)
+        pose_input_shape = (num_rows, num_cols, self.n_joints)   # (32, 32, 17) like 
         self.pose_softargmax_model = self.build_softargmax_model(pose_input_shape)
         self.joint_visibility_model = self.build_visibility_model(pose_input_shape)
         self.pose_depth_model = self.build_depth_model()   # will be None for dim 2
@@ -84,10 +85,11 @@ class PoseModel(object):
             x = add([identity_map, x, h])
             
         # z_p from last block
-        print("Last H shape %s" % str(h))
-        z_p = MaxPooling2D((2, 2))(h)
-        z_p = layers.act_conv_bn(z_p, 1024, (1, 1))
-        outputs.append(z_p)
+        if not self.pose_only:
+            print("Last H shape %s" % str(h))
+            z_p = MaxPooling2D((2, 2))(h)
+            z_p = layers.act_conv_bn(z_p, 1024, (1, 1))
+            outputs.append(z_p)
 
         self._model = Model(inputs=inp, outputs=outputs)
 

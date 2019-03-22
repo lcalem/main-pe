@@ -1,3 +1,4 @@
+import random
 import time
 
 import tensorflow as tf
@@ -104,20 +105,6 @@ class CycleModel(BaseModel):
         # loss = mean_squared_error
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
-        
-    def build_pose_only(self):
-        '''
-        Only the pose branch will be built and activated, no concat, no decoder
-        -> for baselines and ablation study
-        '''
-        inp = Input(shape=self.input_shape)
-        z_p = self.pose_encoder(inp)
-        
-        self.model = Model(inputs=inp, outputs=z_p)
-        
-        ploss = [pose_loss()] * len(z_p)
-        self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
-        self.model.summary()
 
     def build_appearance_model(self, input_shape):
         '''
@@ -186,8 +173,19 @@ class CycleModel(BaseModel):
             - z_a: 16 x 16 x 1024
         output: 16 x 16 x 2048
         '''
-        shuffled_z_p = Lambda(lambda x: tf.random.shuffle(x))(z_p)
+        # shuffled_z_p = Lambda(lambda x: tf.random.shuffle(x))(z_p)    NOT DIFF
+            
+        # indexes = list(range(self.batch_size)) 
+        # random.shuffle(indexes)
+        # mixed_z_p = z_p[indexes,:,:,:]
+        # concat = concatenate([z_a, mixed_z_p])
+           
+        shuffled_z_p = Lambda(lambda x: tf.roll(x, shift=1, axis=0))(z_p)
         concat = concatenate([z_a, shuffled_z_p])
+        sums_ori = tf.math.reduce_sum(z_p, axis=(1, 2, 3))
+        sums_aft = tf.math.reduce_sum(shuffled_z_p, axis=(1, 2, 3))
+        print("z_p sums %s" % str(sums_ori))
+        print("mixed z_p sums %s" % str(sums_aft))
         return concat
         
 

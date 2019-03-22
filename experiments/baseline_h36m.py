@@ -35,7 +35,7 @@ def launch_training(dataset_path, model_folder, n_epochs, batch_size, pose_block
     model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 baseline_h36m.py --dataset_path '/share/DEEPLEARNING/datasets/h36m' --dataset_name 'h36m' --model_name 'baseline_8' --n_epochs 60 --batch_size 32 --pose_blocks 8 --gpu 0
+# python3 baseline_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'baseline_1b_bs32' --n_epochs 60 --batch_size 32 --pose_blocks 1 --gpu 3
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)

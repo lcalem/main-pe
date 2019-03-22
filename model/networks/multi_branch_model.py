@@ -40,35 +40,37 @@ class MultiBranchModel(BaseModel):
         self.model.load_weights(weights_path)
 
     def build(self):
-        inp = Input(shape=self.input_shape)
-
-        # encoders
-        time_1 = time.time()
-        z_a = self.appearance_encoder(inp)
-        time_2 = time.time()
-        pose_outputs = self.pose_encoder(inp)
-        time_3 = time.time()
-
-        print("Build E_a %s, build E_p %s" % (time_2 - time_1, time_3 - time_2))
         
+        # build everything
+        time_1 = time.time()
+        self.appearance_model = self.build_appearance_model(self.input_shape)
+        time_2 = time.time()
+        self.pose_model = self.build_pose_model(self.input_shape)
+        time_3 = time.time()
+        self.decoder_model = self.build_decoder_model((16, 16, 2048))  # ...
+        time_4 = time.time()
+        
+        print("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
+        
+        # encoders
+        z_a = self.appearance_model(inp)
+        assert z_a.shape.as_list() == [None, 16, 16, 1024], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
+        pose_outputs = self.pose_model(inp)
+
         poses, z_p = self.check_pose_output(pose_outputs)
         print("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
 
         # decoder
         concat = self.concat(z_a, z_p)
-        print("Shape concat %s" % str(concat.shape))
         assert concat.shape.as_list() == [None, 16, 16, 2048], 'wrong concat shape %s' % str(concat.shape)
-        i_hat = self.decoder(concat)
+        i_hat = self.decoder_model(concat)
 
         outputs = [i_hat]
         outputs.extend(poses)
         self.model = Model(inputs=inp, outputs=outputs)
         print("Outputs shape %s" % self.model.output_shape)
 
-        ploss = [pose_loss()] * len(poses)
-        losses = [reconstruction_loss()]
-        losses.extend(ploss)
-        # loss = mean_squared_error
+        ploss = [pose_loss()] * self.n_blocks
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
         
@@ -77,47 +79,38 @@ class MultiBranchModel(BaseModel):
         Only the pose branch will be built and activated, no concat, no decoder
         -> for baselines and ablation study
         '''
-        inp = Input(shape=self.input_shape)
-        z_p = self.pose_encoder(inp)
+        self.model = self.build_pose_model(self.input_shape, pose_only=True)
         
-        self.model = Model(inputs=inp, outputs=z_p)
-        
-        ploss = [pose_loss()] * len(z_p)
+        ploss = [pose_loss()] * self.n_blocks
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
 
-    def appearance_encoder(self, inp):
+    def build_appearance_model(self, input_shape):
         '''
         resnet50 for now
         input: 256 x 256 x 3
         output: 16 x 16 x 1024
         '''
-        enc_model = ResNet50(include_top=False, weights='imagenet', input_tensor=inp)
+        enc_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
         output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 1024 activation we want, before the last resnet block
         assert output_layer.name.startswith('activation')
         
         partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
-        z_a = partial_model.output # 16 x 16 x 1024
-        assert z_a.shape.as_list() == [None, 16, 16, 1024], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
-        
-        return z_a
-
-    def pose_encoder(self, inp):
+        return partial_model
+    
+    def build_pose_model(self, input_shape, pose_only=False):
         '''
         reception / stacked hourglass
         input: 256 x 256 x 3
         output: [(n_joints, dim + 1) * n_blocks, (16, 16, 1024)]
         '''
-        pose_model = PoseModel(inp, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
-        out = pose_model.output
-
-        return out
+        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only).model
     
     def check_pose_output(self, pose_outputs):
         '''
         pose_outputs should be a list of poses + z_p
         '''
-        assert len(pose_outputs) == self.n_blocks + 1
+        assert len(pose_outputs) == self.n_blocks + 1  # + 1 for the z_p (16 x 16 x 1024) representation
         poses = pose_outputs[:-1]
         z_p = pose_outputs[-1]
         
@@ -140,14 +133,11 @@ class MultiBranchModel(BaseModel):
         concat = concatenate([z_a, z_p])
         return concat
 
-    def decoder(self, concat):
+    def build_decoder_model(self, input_shape):
         '''
         from concatenated representations to image reconstruction
         input: 16 x 16 x 2048 (z_a and z_p concatenated)
         output: 256 x 256 x 3
         '''
-        decoder_model = DecoderModel(input_tensor=concat).model
-        out = decoder_model(concat)
-
-        return out
+        return DecoderModel(input_shape=input_shape).model
 

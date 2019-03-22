@@ -35,15 +35,15 @@ def launch_training(dataset_path, model_folder, n_epochs, batch_size, pose_block
     model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 hybrid_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'hybrid_4b_local' --n_epochs 60 --batch_size 8 --pose_blocks 4 --gpu 3
+# python3 hybrid_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'hybrid_1b_local_bs16' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 2
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)
     parser.add_argument("--dataset_name", required=True)
     parser.add_argument("--model_name", required=True)
-    parser.add_argument("--n_epochs", required=True)
-    parser.add_argument("--batch_size", required=True)
-    parser.add_argument("--pose_blocks", required=True)
+    parser.add_argument("--n_epochs", type=int, required=True)
+    parser.add_argument("--batch_size", type=int, required=True)
+    parser.add_argument("--pose_blocks", type=int, default=4)
     parser.add_argument("--gpu", required=True)
     args = parser.parse_args()
     
