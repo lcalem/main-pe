@@ -13,7 +13,7 @@ def exp_init(params):
     - dump current model code in it (because for now we only save weights) TODO
     '''
     # model folder
-    model_folder = '/home/caleml/pe_experiments/exp_%s_%s_%s' % (params['model_name'], params['dataset_name'], datetime.datetime.now().strftime("%Y%m%d%H%M"))
+    model_folder = '%s/pe_experiments/exp_%s_%s_%s' % (os.environ['HOME'], params['model_name'], params['dataset_name'], datetime.datetime.now().strftime("%Y%m%d%H%M"))
     os.makedirs(model_folder)
     print("Conducting experiment for %s epochs and %s blocks in folder %s" % (params['n_epochs'], params['pose_blocks'], model_folder))
 

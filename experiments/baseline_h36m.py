@@ -3,7 +3,7 @@ import datetime
 import os
 import sys
 
-sys.path.append("/home/caleml/main-pe/")   # re-lol
+sys.path.append("%s/main-pe/" % os.environ['HOME'])   # re-lol
 
 from data.datasets.h36m import Human36M
 from data.utils.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE

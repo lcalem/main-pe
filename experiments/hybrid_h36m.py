@@ -3,7 +3,7 @@ import datetime
 import os
 import sys
 
-sys.path.append("/home/caleml/main-pe/")   # re-lol
+sys.path.append("%s/main-pe/" % os.environ['HOME'])   # re-lol
 
 from data.datasets.h36m import Human36M
 from data.utils.data_utils import TEST_MODE, TRAIN_MODE, VALID_MODE
@@ -35,7 +35,7 @@ def launch_training(dataset_path, model_folder, n_epochs, batch_size, pose_block
     model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 hybrid_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'hybrid_1b_local_bs16' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 2
+# python3 hybrid_h36m.py --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --model_name 'hybrid_1b_bs16' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 3
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)
