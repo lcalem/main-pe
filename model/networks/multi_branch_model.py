@@ -74,6 +74,7 @@ class MultiBranchModel(BaseModel):
         print("Outputs shape %s" % self.model.output_shape)
 
         ploss = [pose_loss()] * self.n_blocks
+        losses = [reconstruction_loss()] + ploss
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
         
