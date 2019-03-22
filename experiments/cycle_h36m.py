@@ -35,7 +35,7 @@ def launch_training(dataset_path, model_folder, n_epochs, batch_size, pose_block
     model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=model_folder, n_epochs=n_epochs)
 
 
-# python3 cycle_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name 'cycle_4b_local' --n_epochs 60 --batch_size 12 --pose_blocks 4 --gpu 2
+# python3 cycle_h36m.py --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --model_name '' --n_epochs 60 --batch_size 12 --pose_blocks 4 --gpu 2
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", required=True)
@@ -47,7 +47,8 @@ if __name__ == '__main__':
     parser.add_argument("--gpu", required=True)
     args = parser.parse_args()
     
-    model_folder = exp_init(vars(args))
+    filename = os.path.basename(__file__).split('.')[0]
+    model_folder = exp_init(filename, vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 

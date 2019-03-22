@@ -1,5 +1,6 @@
 import os
 
+from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.models import load_model
 
 from model import callbacks
@@ -25,6 +26,12 @@ class BaseModel(object):
         cb_list.append(callbacks.SaveModel(model_folder))
         # callbacks.append(LearningRateScheduler(lr_scheduler))
         # callbacks.append(eval_callback)
+        
+        # tensorboard
+        logs_folder = os.environ['HOME'] + '/pe_experiments/tensorboard/' + model_folder.split('/')[-1]
+        print('Tensorboard log folder %s' % logs_folder)
+        tensorboard = TensorBoard(log_dir=os.path.join(logs_folder, 'tensorboard'))
+        cb_list.append(tensorboard)
 
         self.model.fit_generator(data_tr,
                                  steps_per_epoch=steps_per_epoch,
