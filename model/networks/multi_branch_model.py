@@ -52,6 +52,9 @@ class MultiBranchModel(BaseModel):
         
         print("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
         
+        inp = Input(shape=self.input_shape)
+        print("Input shape %s" % str(inp.shape))
+        
         # encoders
         z_a = self.appearance_model(inp)
         assert z_a.shape.as_list() == [None, 16, 16, 1024], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
