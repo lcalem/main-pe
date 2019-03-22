@@ -73,13 +73,16 @@ def pose_loss():
 
 
 def reconstruction_loss():
+    '''
+    scaling factor for reconstruction loss: 0.1 to keep it on the same scale as the pose loss
+    '''
 
     def _rec_loss(y_true, y_pred):
         print("rec y_pred shape %s" % (str(y_pred.shape)))
         num_joints = y_pred.get_shape().as_list()[-1]
 
         rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_joints
-        return rec_loss
+        return 0.1 * rec_loss
 
     return _rec_loss
 
