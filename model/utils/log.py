@@ -7,24 +7,30 @@ WARNING = '\033[93m'
 FAIL = '\033[91m'
 ENDC = '\033[0m'
 
+
 def printc(color, vmsg):
-    print (color + vmsg + ENDC, end='')
+    print(color + vmsg + ENDC, end='')
     sys.stdout.flush()
+
 
 def printcn(color, vmsg):
     print (color + vmsg + ENDC)
     sys.stdout.flush()
 
+
 def printnl(vmsg):
     sys.stdout.write(vmsg + '\n')
     sys.stdout.flush()
+
 
 def warning(vmsg):
     sys.stdout.write(WARNING + vmsg + ENDC + '\n')
     sys.stdout.flush()
 
+
 def sprintcn(color, vmsg):
     return color + vmsg + ENDC + '\n'
+
 
 def sizeof_fmt(num, suffix='B'):
     for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
@@ -32,6 +38,7 @@ def sizeof_fmt(num, suffix='B'):
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
+
 
 def sizeof_eng_fmt(num):
     for unit in ['','K','M','G','T','P','E','Z']:

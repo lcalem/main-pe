@@ -172,7 +172,8 @@ def transform_2d_points(A, x, transpose=False, inverse=False):
 
 
 def transform_pose_sequence(A, poses, inverse=True):
-    """For each pose in a sequence, apply the given affine transformation.
+    '''
+    For each pose in a sequence, apply the given affine transformation.
 
     # Arguments
         A: [3, 3] affine transformation matrix or
@@ -182,7 +183,7 @@ def transform_pose_sequence(A, poses, inverse=True):
 
     # Return
         The transformed points.
-    """
+    '''
 
     assert (len(poses.shape) == 3), \
             'transform_pose_sequence: expected 3D tensor, got ' \
