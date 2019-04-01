@@ -22,13 +22,14 @@ class MultiBranchModel(BaseModel):
     One common decoder to recreate the image
     '''
 
-    def __init__(self, dim, n_joints=16, nb_pose_blocks=8, reception_kernel_size=(5, 5)):
+    def __init__(self, dim, n_joints=16, nb_pose_blocks=8, reception_kernel_size=(5, 5), verbose=True):
         assert dim in [2, 3], 'Cannot work outside of 2D or 3D'
         
         self.dim = dim
         self.n_joints = n_joints
         self.n_blocks = nb_pose_blocks
         self.reception_kernel_size = reception_kernel_size
+        self.verbose = verbose
 
         BaseModel.__init__(self)
         
@@ -39,6 +40,10 @@ class MultiBranchModel(BaseModel):
             self.build()
         self.model.load_weights(weights_path)
 
+    def log(self, msg):
+        if self.verbose:
+            print(msg)
+        
     def build(self):
         
         # build everything
@@ -50,10 +55,10 @@ class MultiBranchModel(BaseModel):
         self.decoder_model = self.build_decoder_model((16, 16, 2048))  # ...
         time_4 = time.time()
         
-        print("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
+        self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
         
         inp = Input(shape=self.input_shape)
-        print("Input shape %s" % str(inp.shape))
+        self.log("Input shape %s" % str(inp.shape))
         
         # encoders
         z_a = self.appearance_model(inp)
@@ -61,7 +66,7 @@ class MultiBranchModel(BaseModel):
         pose_outputs = self.pose_model(inp)
 
         poses, z_p = self.check_pose_output(pose_outputs)
-        print("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
+        self.log("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
 
         # decoder
         concat = self.concat(z_a, z_p)
@@ -71,12 +76,14 @@ class MultiBranchModel(BaseModel):
         outputs = [i_hat]
         outputs.extend(poses)
         self.model = Model(inputs=inp, outputs=outputs)
-        print("Outputs shape %s" % self.model.output_shape)
+        self.log("Outputs shape %s" % self.model.output_shape)
 
         ploss = [pose_loss()] * self.n_blocks
         losses = [reconstruction_loss()] + ploss
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
-        self.model.summary()
+        
+        if self.verbose:
+            self.model.summary()
         
     def build_pose_only(self):
         '''
@@ -87,7 +94,9 @@ class MultiBranchModel(BaseModel):
         
         ploss = [pose_loss()] * self.n_blocks
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
-        self.model.summary()
+        
+        if self.verbose:
+            self.model.summary()
 
     def build_appearance_model(self, input_shape):
         '''
@@ -108,7 +117,7 @@ class MultiBranchModel(BaseModel):
         input: 256 x 256 x 3
         output: [(n_joints, dim + 1) * n_blocks, (16, 16, 1024)]
         '''
-        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only).model
+        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only, verbose=self.verbose).model
     
     def check_pose_output(self, pose_outputs):
         '''

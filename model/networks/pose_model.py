@@ -13,13 +13,14 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False):
+    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False, verbose=True):
         self.dim = dim
         
         self.n_joints = n_joints
         self.n_blocks = n_blocks
         self.kernel_size = kernel_size
         self.pose_only = pose_only
+        self.verbose = verbose
 
         if dim == 2:
             self.n_heatmaps = self.n_joints
@@ -34,6 +35,10 @@ class PoseModel(object):
     @property
     def model(self):
         return self._model
+    
+    def log(self, msg):
+        if self.verbose:
+            print(msg)
 
     def build(self, input_shape):
         '''
@@ -76,7 +81,7 @@ class PoseModel(object):
 
             pose, visible = self.pose_regression(h, name='PoseReg%s' % (i_block + 1))
             pose_vis = concatenate([pose, visible], axis=-1)
-            print("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
+            self.log("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
 
             outputs.append(pose_vis)
 
@@ -86,7 +91,7 @@ class PoseModel(object):
             
         # z_p from last block
         if not self.pose_only:
-            print("Last H shape %s" % str(h))
+            self.log("Last H shape %s" % str(h))
             z_p = MaxPooling2D((2, 2))(h)
             z_p = layers.act_conv_bn(z_p, 1024, (1, 1))
             outputs.append(z_p)
