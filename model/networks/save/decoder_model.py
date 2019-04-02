@@ -7,7 +7,7 @@ from model import layers
 class DecoderModel(object):
 
     def __init__(self, input_shape):
-        print("gud_dec")
+
         self.build(input_shape)
 
     @property

@@ -4,7 +4,6 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import add
 from model import layers
 
-print("gud_blocks")
 
 def sepconv_residual(x, out_size, name, kernel_size=(3, 3)):
     '''

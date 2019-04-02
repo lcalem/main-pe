@@ -1,13 +1,14 @@
 
 from tensorflow.keras import Model, Input
 
-from model import layers
-
+# from model import layers
+import importlib.machinery
+layers = importlib.machinery.SourceFileLoader('layers', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/layers.py').load_module()
 
 class DecoderModel(object):
 
     def __init__(self, input_shape):
-        print("gud_dec")
+
         self.build(input_shape)
 
     @property

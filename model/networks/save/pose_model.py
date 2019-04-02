@@ -14,7 +14,6 @@ DEPTH_MAPS = 16
 class PoseModel(object):
 
     def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False):
-        print("gud_pose")
         self.dim = dim
         
         self.n_joints = n_joints

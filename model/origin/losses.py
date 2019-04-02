@@ -47,7 +47,6 @@ def elastic_bce(y_true, y_pred):
     y_pred: (None, 16, 2)
     '''
     idx = tf.cast(tf.math.greater(y_true, 0.), tf.float32)
-    print("Shape %s" % idx.shape)
     #tmp_sum = tf.math.reduce_sum(idx, axis=(-1, -2))
     #print("Shape sum %s" % tmp_sum.shape)
     #num_joints = tf.clip_by_value(tmp_sum, 1, None)
@@ -64,7 +63,7 @@ def elastic_bce(y_true, y_pred):
 def pose_loss():
 
     def _pose_loss(y_true, y_pred):
-        print("pose y_pred shape %s" % (str(y_pred.shape)))
+        # print("pose y_pred shape %s" % (str(y_pred.shape)))
 
         pose_loss = elastic_bce(y_true, y_pred)
         return pose_loss

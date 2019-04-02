@@ -6,12 +6,17 @@ from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.optimizers import RMSprop
 
-from model.losses import pose_loss
-from model.losses import reconstruction_loss
+# from model.losses import pose_loss
+# from model.losses import reconstruction_loss
 
 from model.networks import BaseModel
-from model.networks.decoder_model import DecoderModel
-from model.networks.pose_model import PoseModel
+# from model.networks.decoder_model import DecoderModel
+# from model.networks.pose_model import PoseModel
+
+import importlib.machinery
+loss_module = importlib.machinery.SourceFileLoader('losses', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/losses.py').load_module()
+decoder_module = importlib.machinery.SourceFileLoader('decoder_model', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/networks/decoder_model.py').load_module()
+pose_module = importlib.machinery.SourceFileLoader('pose_model', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/networks/pose_model.py').load_module()
 
 
 class MultiBranchModel(BaseModel):
@@ -73,8 +78,8 @@ class MultiBranchModel(BaseModel):
         self.model = Model(inputs=inp, outputs=outputs)
         print("Outputs shape %s" % self.model.output_shape)
 
-        ploss = [pose_loss()] * self.n_blocks
-        losses = [reconstruction_loss()] + ploss
+        ploss = [loss_module.pose_loss()] * self.n_blocks
+        losses = [loss_module.reconstruction_loss()] + ploss
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
         
@@ -108,7 +113,7 @@ class MultiBranchModel(BaseModel):
         input: 256 x 256 x 3
         output: [(n_joints, dim + 1) * n_blocks, (16, 16, 1024)]
         '''
-        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only).model
+        return pose_module.PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only).model
     
     def check_pose_output(self, pose_outputs):
         '''
@@ -143,5 +148,5 @@ class MultiBranchModel(BaseModel):
         input: 16 x 16 x 2048 (z_a and z_p concatenated)
         output: 256 x 256 x 3
         '''
-        return DecoderModel(input_shape=input_shape).model
+        return decoder_module.DecoderModel(input_shape=input_shape).model
 

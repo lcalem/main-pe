@@ -42,8 +42,6 @@ from model.activations import channel_softmax_2d
 
 from model.utils import math
 
-print("gud_layers")
-
 
 def get_names(name, name_types):
     '''

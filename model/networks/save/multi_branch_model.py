@@ -13,6 +13,12 @@ from model.networks import BaseModel
 from model.networks.decoder_model import DecoderModel
 from model.networks.pose_model import PoseModel
 
+import sys
+print(sys.path)
+
+import inspect
+print('PoseModel file %s' % inspect.getmodule(PoseModel.__class__))
+
 
 class MultiBranchModel(BaseModel):
     '''

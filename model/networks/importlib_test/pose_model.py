@@ -4,9 +4,12 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import add, concatenate
 from tensorflow.keras.layers import Activation, GlobalMaxPooling1D, GlobalMaxPooling2D, Lambda, MaxPooling2D, UpSampling2D
 
-from model import blocks
-from model import layers
+# from model import blocks
+# from model import layers
 
+import importlib.machinery
+layers = importlib.machinery.SourceFileLoader('layers', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/layers.py').load_module()
+blocks = importlib.machinery.SourceFileLoader('blocks', '/home/caleml/pe_experiments/exp_20190322_1942_hybrid_h36m__1b_bs16/model_src/model/blocks.py').load_module()
 
 DEPTH_MAPS = 16
 
@@ -14,7 +17,6 @@ DEPTH_MAPS = 16
 class PoseModel(object):
 
     def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False):
-        print("gud_pose")
         self.dim = dim
         
         self.n_joints = n_joints
