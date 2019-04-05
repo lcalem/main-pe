@@ -66,7 +66,7 @@ def pose_loss():
         # print("pose y_pred shape %s" % (str(y_pred.shape)))
 
         pose_loss = elastic_bce(y_true, y_pred)
-        return pose_loss
+        return 10 * pose_loss
 
     return _pose_loss
 
