@@ -20,7 +20,7 @@ from model.networks.multi_branch_model import MultiBranchModel
 from model.utils import pose_format, log
 
 
-def exp_init(exp_file, params):
+def exp_init(params):
     '''
     common actions for setuping an experiment:
     - create experiment folder
@@ -28,7 +28,7 @@ def exp_init(exp_file, params):
     - dump current model code in it (because for now we only save weights) TODO
     '''
     # model folder
-    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (os.environ['HOME'], datetime.datetime.now().strftime("%Y%m%d_%H%M"), exp_file, params.get('name', ''), params['pose_blocks'], params['batch_size'])
+    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (os.environ['HOME'], datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
     os.makedirs(model_folder)
     print("Conducting experiment for %s epochs and %s blocks in folder %s" % (params['n_epochs'], params['pose_blocks'], model_folder))
 
@@ -47,8 +47,8 @@ def exp_init(exp_file, params):
 
 def lr_scheduler(epoch, lr):
 
-    if epoch in [80, 100]:
-        newlr = 0.2 * lr
+    if epoch in [20, 30]:
+        newlr = 0.5 * lr
         log.printcn(log.WARNING, 'lr_scheduler: lr %g -> %g @ %d' % (lr, newlr, epoch))
     else:
         newlr = lr
@@ -119,10 +119,8 @@ class Launcher():
         # model
         self.build_model()
         
-        model.add_callback()
-        
         # train
-        model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs)
+        model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs, cb_list=cb_list)
         
         
     def get_h36m_outputs(self):
@@ -154,6 +152,10 @@ class Launcher():
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 2
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 # python3 common.py --exp_type cycle --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 12 --pose_blocks 2 --gpu 2
+
+# python3 common.py --exp_type baseline --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
+# python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 3
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_type", required=True)
@@ -166,8 +168,7 @@ if __name__ == '__main__':
     parser.add_argument("--name")
     args = parser.parse_args()
     
-    filename = os.path.basename(__file__).split('.')[0]
-    model_folder = exp_init(filename, vars(args))
+    model_folder = exp_init(vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     

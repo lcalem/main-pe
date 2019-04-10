@@ -1,13 +1,15 @@
 import time
 
+import tensorflow as tf
+
 from tensorflow.keras import Model, Input
 
 from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.layers import concatenate
 from tensorflow.keras.optimizers import RMSprop
 
-from model.losses import pose_loss
-from model.losses import reconstruction_loss
+from model.losses import pose_loss, vgg_loss, reconstruction_loss
 
 from model.networks import BaseModel
 from model.networks.decoder_model import DecoderModel
@@ -73,13 +75,16 @@ class MultiBranchModel(BaseModel):
         assert concat.shape.as_list() == [None, 16, 16, 2048], 'wrong concat shape %s' % str(concat.shape)
         i_hat = self.decoder_model(concat)
 
+        # losses
+        pose_losses = [pose_loss()] * self.n_blocks
+        losses = [reconstruction_loss()] + ploss
+        
+        # model
         outputs = [i_hat]
         outputs.extend(poses)
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
-
-        ploss = [pose_loss()] * self.n_blocks
-        losses = [reconstruction_loss()] + ploss
+        
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         
         if self.verbose:
@@ -153,4 +158,22 @@ class MultiBranchModel(BaseModel):
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model
+    
+    def build_vgg_model(self, input_shape):
+        '''
+        VGG model for perceptual loss
+        input: 256 x 256 x 3 reconstructed image (i_hat)
+        output: 
+        '''
+        vgg_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
+        vgg_model.trainable=False
 
+        for layer in vgg_model.layers:
+            layer.trainable=False
+            
+        # output_layers = [1,3,4,6,7]
+        output_layers = [1, 4, 7]  # block1_conv1, block2_conv1, block3_conv1
+        outputs = [vgg_model.layers[i].output for i in output_layers]
+        
+        vgg_loss_model = Model(vgg_model.inputs, outputs)
+        return vgg_loss_model

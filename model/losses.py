@@ -78,12 +78,26 @@ def reconstruction_loss():
 
     def _rec_loss(y_true, y_pred):
         print("rec y_pred shape %s" % (str(y_pred.shape)))
-        num_joints = y_pred.get_shape().as_list()[-1]
+        num_channels = y_pred.get_shape().as_list()[-1]
 
-        rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_joints
+        rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
         return 0.1 * rec_loss
 
     return _rec_loss
+
+
+def vgg_loss():
+    '''
+    perceptual loss with VGG stages
+    '''
+    def _vgg_loss(y_true, y_pred):
+        print("vgg y_pred shape %s" % (str(y_pred.shape)))
+        num_channels = y_pred.get_shape().as_list()[-1]
+
+        loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
+        return loss
+        
+    return _vgg_loss
 
 
 def cycle_loss():
