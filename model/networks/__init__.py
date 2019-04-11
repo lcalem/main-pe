@@ -1,6 +1,5 @@
 import os
 
-from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.models import load_model
 
 from model import callbacks

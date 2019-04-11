@@ -77,7 +77,7 @@ class MultiBranchModel(BaseModel):
 
         # losses
         pose_losses = [pose_loss()] * self.n_blocks
-        losses = [reconstruction_loss()] + ploss
+        losses = [reconstruction_loss()] + pose_losses
         
         # model
         outputs = [i_hat]

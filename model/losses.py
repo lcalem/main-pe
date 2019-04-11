@@ -89,13 +89,21 @@ def reconstruction_loss():
 def vgg_loss():
     '''
     perceptual loss with VGG stages
+    y_pred is the concatenation of:
+        - the vgg activations for the reconstructed image 
+        - the vgg activations for the ground truth image
+    y_true is phony here because everything is in y_pred
+    
+    The loss is an MSE of these activations
+    The model stacks vgg_rec_outputs (for the reconstructed image) with vgg_ori_outputs (for the input image) in that order
     '''
     def _vgg_loss(y_true, y_pred):
-        print("vgg y_pred shape %s" % (str(y_pred.shape)))
-        num_channels = y_pred.get_shape().as_list()[-1]
+        print("vgg y_pred shape %s (vgg_rec_outputs %s, vgg_ori_outputs %s)" % (str(y_pred.shape), str(y_pred[:, 0, :, :, :].shape), str(y_pred[:, 1, :, :, :].shape)))
 
-        loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
-        return loss
+        return tf.reduce_mean(tf.math.square(y_pred[0] - y_pred[1]), axis=-1)
+        # num_channels = y_pred.get_shape().as_list()[-1]
+        # loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
+        # return loss
         
     return _vgg_loss
 

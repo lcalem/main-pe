@@ -1,6 +1,7 @@
 import sys
 
 import numpy as np
+import tensorflow as tf
 
 import random
 from multiprocessing import Queue
@@ -54,7 +55,8 @@ class BatchLoader(Sequence):
         self.datasets = dataset
         self.x_dictkeys = x_dictkeys
         self.y_dictkeys = y_dictkeys
-        self.allkeys = x_dictkeys + y_dictkeys
+        self.allkeys = x_dictkeys + [k for k in y_dictkeys if not k.startswith('phony')]
+        print('y_dict %s, allkeys %s' % (str(self.y_dictkeys), str(self.allkeys)))
 
         # Make sure that all datasets have the same shapes for all dictkeys
         for data_key in self.allkeys:
@@ -102,7 +104,14 @@ class BatchLoader(Sequence):
         y_batch = []
         for i in range(self.num_predictions):
             for dkey in self.y_dictkeys:
-                y_batch.append(data_dict[dkey])
+                if dkey == 'phony':
+                    y_batch.append(np.ones((self.batch_sizes[0], 1), dtype=np.bool))
+                elif dkey.startswith('phony_'):
+                    # extract the shape of the phony key an replace 'b' with the current batch size
+                    shape = tuple([int(elt) if elt.lower() != 'b' else self.batch_sizes[0] for elt in dkey.split('_')[1:]])
+                    y_batch.append(np.ones(shape, dtype=np.bool))
+                else:
+                    y_batch.append(data_dict[dkey])
 
         return x_batch, y_batch
 

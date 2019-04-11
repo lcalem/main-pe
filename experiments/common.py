@@ -6,6 +6,7 @@ import sys
 import yaml
 
 from tensorflow.keras.callbacks import LearningRateScheduler
+from tensorflow.keras.callbacks import TensorBoard
 
 sys.path.append("%s/main-pe/" % os.environ['HOME'])   # lol
 
@@ -68,6 +69,8 @@ class Launcher():
         self.batch_size = batch_size
         self.pose_blocks = pose_blocks
         
+        self.pose_only = True if exp_type == 'baseline' else False
+        
         
     def launch(self):
         '''
@@ -79,8 +82,7 @@ class Launcher():
         5. launch actual training
         '''
         
-        h36m_path = dataset_path
-        h36m = Human36M(self.h36m_path, dataconf=config.human36m_dataconf, poselayout=pose_format.pa17j3d, topology='frames')
+        h36m = Human36M(self.dataset_path, dataconf=config.human36m_dataconf, poselayout=pose_format.pa17j3d, topology='frames')
 
         # training data
         dataset_output = self.get_h36m_outputs()
@@ -105,7 +107,7 @@ class Launcher():
     
         # callbacks
         cb_list = list()
-        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, puvd_val[:,0,2], scam_val, logdir=self.model_folder)
+        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, puvd_val[:,0,2], scam_val, pose_only=self.pose_only, logdir=self.model_folder)
         
         logs_folder = os.environ['HOME'] + '/pe_experiments/tensorboard/' + self.model_folder.split('/')[-1]
         print('Tensorboard log folder %s' % logs_folder)
@@ -120,7 +122,7 @@ class Launcher():
         self.build_model()
         
         # train
-        model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs, cb_list=cb_list)
+        self.model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs, cb_list=cb_list)
         
         
     def get_h36m_outputs(self):
@@ -154,7 +156,7 @@ class Launcher():
 # python3 common.py --exp_type cycle --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 12 --pose_blocks 2 --gpu 2
 
 # python3 common.py --exp_type baseline --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
-# python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 3
+# python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
