@@ -17,6 +17,7 @@ from data.loader import BatchLoader
 from model import config
 from model import callbacks
 from model.networks.cycle_model import CycleModel
+from model.networks.mbm_vgg import MultiBranchVGGModel
 from model.networks.multi_branch_model import MultiBranchModel
 from model.utils import pose_format, log
 
@@ -130,8 +131,10 @@ class Launcher():
             return ['pose'] * self.pose_blocks
         elif self.exp_type == 'hybrid':
             return ['frame'] + ['pose'] * self.pose_blocks
+        elif self.exp_type == 'hybrid_vgg':
+            return ['phony'] * 3 + ['pose'] * self.pose_blocks
         elif self.exp_type == 'cycle':
-            return ['frame'] + ['pose'] * self.pose_blocks + ['action'] * 3
+            return ['frame'] + ['pose'] * self.pose_blocks + ['phony'] * 3
         else:
             raise Exception('Unknown exp_type %s' % self.exp_type)
         
@@ -146,6 +149,10 @@ class Launcher():
             self.model = MultiBranchModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
+        elif self.exp_type == 'hybrid_vgg':
+            self.model = MultiBranchVGGModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model.build()
+            
         elif self.exp_type == 'cycle':
             self.model = CycleModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
@@ -157,6 +164,7 @@ class Launcher():
 
 # python3 common.py --exp_type baseline --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
+# python3 common.py --exp_type hybrid_vgg --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
