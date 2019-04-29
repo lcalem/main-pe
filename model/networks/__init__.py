@@ -21,6 +21,13 @@ class BaseModel(object):
     def load(self, checkpoint_path, custom_objects=None):
         self.model = load_model(checkpoint_path, custom_objects=custom_objects)
         
+    def load_weights(self, weights_path, pose_only=False):
+        if pose_only:
+            self.build_pose_only()
+        else:
+            self.build()
+        self.model.load_weights(weights_path)
+        
     def build(self):
         raise NotImplementedError
 

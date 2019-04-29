@@ -12,11 +12,12 @@ from tensorflow.keras.optimizers import RMSprop
 from model.losses import pose_loss, vgg_loss, reconstruction_loss
 
 from model.networks import BaseModel
+from model.networks.multi_branch_model import MultiBranchModel
 from model.networks.decoder_model import DecoderModel
 from model.networks.pose_model import PoseModel
 
 
-class MultiBranchVGGModel(BaseModel):
+class MultiBranchVGGModel(MBMBase):
     '''
     2 branch model :
     - appearance (z_a)
@@ -25,56 +26,13 @@ class MultiBranchVGGModel(BaseModel):
     '''
 
     def __init__(self, dim, n_joints=16, nb_pose_blocks=8, reception_kernel_size=(5, 5), verbose=True):
-        assert dim in [2, 3], 'Cannot work outside of 2D or 3D'
-        
-        self.dim = dim
-        self.n_joints = n_joints
-        self.n_blocks = nb_pose_blocks
-        self.reception_kernel_size = reception_kernel_size
-        self.verbose = verbose
 
-        BaseModel.__init__(self)
+        MBMBase.__init__(self, dim, n_joints, nb_pose_blocks, reception_kernel_size, verbose, zp_depth=1024, za_depth=1024)
         
-    def load_weights(self, weights_path, pose_only=False):
-        if pose_only:
-            self.build_pose_only()
-        else:
-            self.build()
-        self.model.load_weights(weights_path)
-
-    def log(self, msg):
-        if self.verbose:
-            print(msg)
-        
-    def build(self):
-        
-        # build everything
-        time_1 = time.time()
-        self.appearance_model = self.build_appearance_model(self.input_shape)
-        time_2 = time.time()
-        self.pose_model = self.build_pose_model(self.input_shape)
-        time_3 = time.time()
-        self.decoder_model = self.build_decoder_model((16, 16, 2048))  # ...
-        time_4 = time.time()
-        
-        self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
-        
-        inp = Input(shape=self.input_shape)
-        self.log("Input shape %s" % str(inp.shape))
-        
-        # encoders
-        z_a = self.appearance_model(inp)
-        assert z_a.shape.as_list() == [None, 16, 16, 1024], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
-        pose_outputs = self.pose_model(inp)
-
-        poses, z_p = self.check_pose_output(pose_outputs)
-        self.log("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
-
-        # decoder
-        concat = self.concat(z_a, z_p)
-        assert concat.shape.as_list() == [None, 16, 16, 2048], 'wrong concat shape %s' % str(concat.shape)
-        i_hat = self.decoder_model(concat)
-
+    def get_losses_outputs(self, i_hat, poses):
+        '''
+        VGG loss (perceptual loss) for i_hat reconstruction
+        '''
         # losses
         vgg_model = self.build_vgg_model(i_hat.shape.as_list()[1:])
         vgg_rec_outputs = vgg_model(i_hat)
@@ -89,90 +47,14 @@ class MultiBranchVGGModel(BaseModel):
     
         pose_losses = [pose_loss()] * self.n_blocks
         vgg_losses = [vgg_loss()] * len(vgg_outputs)
-        # losses = [reconstruction_loss()] + ploss
-        # losses = [vgg_loss()] + ploss
+
         losses = vgg_losses + pose_losses
         
-        # model
+        # outputs
         outputs = vgg_outputs
-        # outputs = [tf.concat(vgg_outputs, axis=0)]
         outputs.extend(poses)
-        self.model = Model(inputs=inp, outputs=outputs)
-        self.log("Outputs shape %s" % self.model.output_shape)
         
-        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
-        
-        if self.verbose:
-            self.model.summary()
-        
-    def build_pose_only(self):
-        '''
-        Only the pose branch will be built and activated, no concat, no decoder
-        -> for baselines and ablation study
-        '''
-        self.model = self.build_pose_model(self.input_shape, pose_only=True)
-        
-        ploss = [pose_loss()] * self.n_blocks
-        self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
-        
-        if self.verbose:
-            self.model.summary()
-
-    def build_appearance_model(self, input_shape):
-        '''
-        resnet50 for now
-        input: 256 x 256 x 3
-        output: 16 x 16 x 1024
-        '''
-        enc_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-        output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 1024 activation we want, before the last resnet block
-        assert output_layer.name.startswith('activation')
-        
-        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
-        return partial_model
-    
-    def build_pose_model(self, input_shape, pose_only=False):
-        '''
-        reception / stacked hourglass
-        input: 256 x 256 x 3
-        output: [(n_joints, dim + 1) * n_blocks, (16, 16, 1024)]
-        '''
-        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only, verbose=self.verbose).model
-    
-    def check_pose_output(self, pose_outputs):
-        '''
-        pose_outputs should be a list of poses + z_p
-        '''
-        assert len(pose_outputs) == self.n_blocks + 1  # + 1 for the z_p (16 x 16 x 1024) representation
-        poses = pose_outputs[:-1]
-        z_p = pose_outputs[-1]
-        
-        pose_shapes = [pose.shape.as_list() for pose in poses]
-        assert all([shape == [None, self.n_joints, self.dim + 1] for shape in pose_shapes]), 'pose shapes are weird %s' % str(pose_shapes)
-        assert z_p.shape.as_list() == [None, 16, 16, 1024], 'z_p shape not as expected %s' % str(z_p.shape.as_list())
-        
-        return poses, z_p
-
-    def concat(self, z_a, z_p):
-        '''
-        concat pose and appearance representations before decoding
-        input:
-            - z_p: 16 x 16 x 1024
-            - z_a: 16 x 16 x 1024
-        output:
-
-        TODO: This is where the real work should happen
-        '''
-        concat = concatenate([z_a, z_p])
-        return concat
-
-    def build_decoder_model(self, input_shape):
-        '''
-        from concatenated representations to image reconstruction
-        input: 16 x 16 x 2048 (z_a and z_p concatenated)
-        output: 256 x 256 x 3
-        '''
-        return DecoderModel(input_shape=input_shape).model
+        return losses, outputs
     
     def build_vgg_model(self, input_shape):
         '''
