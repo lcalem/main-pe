@@ -22,18 +22,18 @@ class DecoderModel(object):
         concat = Input(shape=input_shape)
 
         up = layers.up(concat)  # 32 x 32
-        up = layers.conv_bn_act(up, 1024, (3, 3))
-        up = layers.conv_bn_act(up, 512, (3, 3))
-        up = layers.conv_bn_act(up, 256, (3, 3))
+        up = layers.conv_bn_act(up, 128, (3, 3))
+        up = layers.conv_bn_act(up, 128, (3, 3))
+        # up = layers.conv_bn_act(up, 128, (3, 3))
 
         up = layers.up(up)  # 64 x 64
-        up = layers.conv_bn_act(up, 256, (3, 3))
-        up = layers.conv_bn_act(up, 256, (3, 3))
-        up = layers.conv_bn_act(up, 128, (3, 3))
+        up = layers.conv_bn_act(up, 64, (3, 3))
+        up = layers.conv_bn_act(up, 64, (3, 3))
+        # up = layers.conv_bn_act(up, 128, (3, 3))
 
         up = layers.up(up)  # 128 x 128
-        up = layers.conv_bn_act(up, 128, (3, 3))
-        up = layers.conv_bn_act(up, 64, (3, 3))
+        up = layers.conv_bn_act(up, 32, (3, 3))
+        up = layers.conv_bn_act(up, 32, (3, 3))
 
         up = layers.up(up)  # 256 x 256
         up = layers.conv_bn_act(up, 3, (3, 3))

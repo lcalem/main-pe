@@ -48,10 +48,6 @@ class MultiBranchReduced(BaseModel):
         else:
             self.build()
         self.model.load_weights(weights_path)
-
-    def log(self, msg):
-        if self.verbose:
-            print(msg)
         
     def build(self):
         
@@ -117,12 +113,14 @@ class MultiBranchReduced(BaseModel):
         input: 256 x 256 x 3
         output: 16 x 16 x 128
         '''
-        enc_model = ResNet34(input_shape=input_shape, top=None)
+        enc_model = ResNet18(input_shape=input_shape, top=None)
+        self.log("full ResNet18 model summary")
         enc_model.summary()
-        output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 128 activation we want, before the last resnet block
+        output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 128 activation we want, before the last resnet block (68 for ResNet34)
         assert output_layer.name.startswith('activation')
         
         partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
+        self.log("partial appearance summary")
         partial_model.summary()
         return partial_model
     

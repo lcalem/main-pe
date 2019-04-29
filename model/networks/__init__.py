@@ -3,6 +3,7 @@ import os
 from tensorflow.keras.models import load_model
 
 from model import callbacks
+from model.utils import log
 
 
 class BaseModel(object):
@@ -12,6 +13,10 @@ class BaseModel(object):
     def __init__(self):
         self.input_shape = (256, 256, 3)
         self.start_lr = 0.001
+        
+    def log(self, msg):
+        if self.verbose:
+            log.printcn(log.HEADER, msg)
 
     def load(self, checkpoint_path, custom_objects=None):
         self.model = load_model(checkpoint_path, custom_objects=custom_objects)
