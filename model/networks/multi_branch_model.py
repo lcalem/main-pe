@@ -7,7 +7,7 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.layers import concatenate
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import RMSprop, Adam
 
 from model.losses import pose_loss, vgg_loss, reconstruction_loss
 
@@ -85,7 +85,8 @@ class MultiBranchModel(BaseModel):
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
         
-        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
+        # self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
+        self.model.compile(loss=losses, optimizer=Adam())
         
         if self.verbose:
             self.model.summary()
@@ -159,21 +160,3 @@ class MultiBranchModel(BaseModel):
         '''
         return DecoderModel(input_shape=input_shape).model
     
-    def build_vgg_model(self, input_shape):
-        '''
-        VGG model for perceptual loss
-        input: 256 x 256 x 3 reconstructed image (i_hat)
-        output: 
-        '''
-        vgg_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape)
-        vgg_model.trainable=False
-
-        for layer in vgg_model.layers:
-            layer.trainable=False
-            
-        # output_layers = [1,3,4,6,7]
-        output_layers = [1, 4, 7]  # block1_conv1, block2_conv1, block3_conv1
-        outputs = [vgg_model.layers[i].output for i in output_layers]
-        
-        vgg_loss_model = Model(vgg_model.inputs, outputs)
-        return vgg_loss_model
