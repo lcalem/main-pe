@@ -1,24 +1,15 @@
-import time
-
 import tensorflow as tf
 
-from tensorflow.keras import Model, Input
+from tensorflow.keras import Model
 
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.layers import concatenate
-from tensorflow.keras.optimizers import RMSprop, Adam
+from model.losses import pose_loss, reconstruction_loss
 
-from model.losses import pose_loss, vgg_loss, reconstruction_loss
-
-from model.networks import BaseModel
-from model.networks.multi_branch_model import MultiBranchModel
+from model.networks.multi_branch_model import MBMBase
 from model.networks.decoder_reduced import DecoderModel
-from model.networks.pose_model import PoseModel
 from model.networks.contrib_resnet import ResNet18, ResNet34
 
 
-class MultiBranchReduced(MultiBranchModel):
+class MultiBranchReduced(MBMBase):
     '''
     2 branch model :
     - appearance (z_a)

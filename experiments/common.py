@@ -17,8 +17,9 @@ from data.loader import BatchLoader
 from model import config
 from model import callbacks
 from model.networks.cycle_model import CycleModel
-from model.networks.mbm_vgg import MultiBranchVGGModel
 from model.networks.multi_branch_model import MultiBranchModel
+from model.networks.mbm_vgg import MultiBranchVGGModel
+from model.networks.mbm_reduced import MultiBranchReduced
 from model.utils import pose_format, log
 
 
@@ -49,7 +50,7 @@ def exp_init(params):
 
 def lr_scheduler(epoch, lr):
 
-    if epoch in [20, 30]:
+    if epoch in [30, 40]:
         newlr = 0.5 * lr
         log.printcn(log.WARNING, 'lr_scheduler: lr %g -> %g @ %d' % (lr, newlr, epoch))
     else:
@@ -129,7 +130,7 @@ class Launcher():
     def get_h36m_outputs(self):
         if self.exp_type == 'baseline':
             return ['pose'] * self.pose_blocks
-        elif self.exp_type == 'hybrid':
+        elif self.exp_type in ['hybrid', 'hybrid_reduced']:
             return ['frame'] + ['pose'] * self.pose_blocks
         elif self.exp_type == 'hybrid_vgg':
             return ['phony'] * 3 + ['pose'] * self.pose_blocks
@@ -147,6 +148,10 @@ class Launcher():
             
         elif self.exp_type == 'hybrid':
             self.model = MultiBranchModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model.build()
+            
+        elif self.exp_type == 'hybrid_reduced':
+            self.model = MultiBranchReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         elif self.exp_type == 'hybrid_vgg':

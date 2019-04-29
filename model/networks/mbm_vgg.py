@@ -1,20 +1,13 @@
-import time
-
 import tensorflow as tf
 
-from tensorflow.keras import Model, Input
+from tensorflow.keras import Model
 
-from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.layers import concatenate, Lambda
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.layers import Lambda
 
-from model.losses import pose_loss, vgg_loss, reconstruction_loss
+from model.losses import pose_loss, vgg_loss
 
-from model.networks import BaseModel
-from model.networks.multi_branch_model import MultiBranchModel
-from model.networks.decoder_model import DecoderModel
-from model.networks.pose_model import PoseModel
+from model.networks.multi_branch_model import MBMBase
 
 
 class MultiBranchVGGModel(MBMBase):
@@ -37,8 +30,7 @@ class MultiBranchVGGModel(MBMBase):
         vgg_model = self.build_vgg_model(i_hat.shape.as_list()[1:])
         vgg_rec_outputs = vgg_model(i_hat)
         vgg_ori_outputs = vgg_model(inp)
-        # vgg_outputs = [concatenate([vgg_rec_outputs[i], vgg_ori_outputs[i]]) for i in range(len(vgg_rec_outputs))]
-        # vgg_outputs = [tf.stack([vgg_rec_outputs[i], vgg_ori_outputs[i]]) for i in range(len(vgg_rec_outputs))]
+
         vgg_outputs = [Lambda(self.stack_vgg_outputs)([vgg_rec_outputs[i], vgg_ori_outputs[i]]) for i in range(len(vgg_rec_outputs))]
        
         print("Type vgg output %s" % type(vgg_outputs))
