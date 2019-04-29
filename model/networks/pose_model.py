@@ -13,14 +13,24 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False, verbose=True):
+    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False, zp_depth=None, verbose=True):
+        '''
+        zp_depth: number of channels for the z_p output.
+            defaults to 1024 (it is None here for the warning check) and is used only if pose_only is False
+        '''
         self.dim = dim
         
         self.n_joints = n_joints
         self.n_blocks = n_blocks
         self.kernel_size = kernel_size
         self.pose_only = pose_only
+        self.zp_depth = zp_depth if zp_depth is not None else 1024
         self.verbose = verbose
+        
+        print("zp_depth %s" % zp_depth)
+        
+        if self.pose_only and zp_depth is not None:
+            log.warning('the reduced option will be ignored because its not compatible with pose_only')
 
         if dim == 2:
             self.n_heatmaps = self.n_joints
@@ -93,7 +103,7 @@ class PoseModel(object):
         if not self.pose_only:
             self.log("Last H shape %s" % str(h))
             z_p = MaxPooling2D((2, 2))(h)
-            z_p = layers.act_conv_bn(z_p, 1024, (1, 1))
+            z_p = layers.act_conv_bn(z_p, self.zp_depth, (1, 1))
             outputs.append(z_p)
 
         self._model = Model(inputs=inp, outputs=outputs)
