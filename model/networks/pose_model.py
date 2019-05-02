@@ -91,7 +91,7 @@ class PoseModel(object):
             h = self.pose_block(x, name='RegMap%d' % (i_block + 1))
 
             pose, visible = self.pose_regression(h, name='PoseReg%s' % (i_block + 1))
-            pose_vis = concatenate([pose, visible], axis=-1)
+            pose_vis = concatenate([pose, visible], axis=-1, name="PoseOutput%s" % (i_block + 1))
             self.log("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
 
             outputs.append(pose_vis)
@@ -104,10 +104,10 @@ class PoseModel(object):
         if not self.pose_only:
             self.log("Last H shape %s" % str(h))
             z_p = MaxPooling2D((2, 2))(h)
-            z_p = layers.act_conv_bn(z_p, self.zp_depth, (1, 1))
+            z_p = layers.act_conv_bn(z_p, self.zp_depth, (1, 1), name="z_p")
             outputs.append(z_p)
 
-        self._model = Model(inputs=inp, outputs=outputs)
+        self._model = Model(inputs=inp, outputs=outputs, name='pose_model')
 
     def stem(self, inp):
         '''

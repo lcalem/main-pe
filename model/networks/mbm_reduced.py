@@ -38,8 +38,7 @@ class MultiBranchReduced(MBMBase):
         losses = [reconstruction_loss()] + pose_losses
         
         # model
-        outputs = [i_hat]
-        outputs.extend(poses)
+        outputs = [i_hat] + poses
         
         return losses, outputs
         
@@ -55,7 +54,7 @@ class MultiBranchReduced(MBMBase):
         output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 128 activation we want, before the last resnet block (68 for ResNet34)
         assert output_layer.name.startswith('activation')
         
-        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
+        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output, name='appearance_model')
         self.log("partial appearance summary")
         partial_model.summary()
         return partial_model

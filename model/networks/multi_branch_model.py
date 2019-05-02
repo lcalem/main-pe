@@ -54,7 +54,7 @@ class MBMBase(BaseModel):
         
         self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
         
-        inp = Input(shape=self.input_shape)
+        inp = Input(shape=self.input_shape, name='image_input')
         self.log("Input shape %s" % str(inp.shape))
         
         # encoders
@@ -76,7 +76,7 @@ class MBMBase(BaseModel):
         # model
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
-        
+
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         # self.model.compile(loss=losses, optimizer=Adam())
         
@@ -108,7 +108,7 @@ class MBMBase(BaseModel):
             
         the 1024 and 2048 can be replaced by smaller ones as they depend on zp_depth
         '''
-        concat = concatenate([z_a, z_p])
+        concat = concatenate([z_a, z_p], name='z_concat')
         return concat
     
     def check_pose_output(self, pose_outputs):
@@ -143,7 +143,7 @@ class MBMBase(BaseModel):
         output_layer = enc_model.layers[-33]  # index of the 16 x 16 x za_depth activation we want, before the last resnet block
         assert output_layer.name.startswith('activation')
         
-        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output)
+        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output, name='appearance_model')
         return partial_model
 
     def build_decoder_model(self, input_shape):
@@ -185,7 +185,6 @@ class MultiBranchModel(MBMBase):
         pose_losses = [pose_loss()] * self.n_blocks
         losses = [reconstruction_loss()] + pose_losses
         
-        outputs = [i_hat]
-        outputs.extend(poses)
+        outputs = [i_hat] + poses
         
         return losses, outputs
