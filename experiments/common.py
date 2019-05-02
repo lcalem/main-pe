@@ -28,7 +28,7 @@ def exp_init(params):
     common actions for setuping an experiment:
     - create experiment folder
     - dump config in it
-    - dump current model code in it (because for now we only save weights) TODO
+    - dump current model code in it (because for now we only save weights)
     '''
     # model folder
     model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (os.environ['HOME'], datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
@@ -50,7 +50,7 @@ def exp_init(params):
 
 def lr_scheduler(epoch, lr):
 
-    if epoch in [30, 40]:
+    if epoch in [20, 30]:
         newlr = 0.5 * lr
         log.printcn(log.WARNING, 'lr_scheduler: lr %g -> %g @ %d' % (lr, newlr, epoch))
     else:
@@ -62,7 +62,7 @@ def lr_scheduler(epoch, lr):
 
 class Launcher():
     
-    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks):
+    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth):
         
         self.exp_type = exp_type
         self.dataset_path = dataset_path
@@ -70,6 +70,10 @@ class Launcher():
         self.n_epochs = n_epochs
         self.batch_size = batch_size
         self.pose_blocks = pose_blocks
+        self.zp_depth = zp_depth
+        
+        if zp_depth is not None:
+            assert exp_type == 'hybrid_reduced', 'zp_depth is an option for hybrid_reduced model'
         
         self.pose_only = True if exp_type == 'baseline' else False
         
@@ -151,7 +155,9 @@ class Launcher():
             self.model.build()
             
         elif self.exp_type == 'hybrid_reduced':
-            self.model = MultiBranchReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            assert isinstance(self.zp_depth, int), 'wrong zp_depth %s' % self.zp_depth
+            log.printcn(log.OKBLUE, 'launching hybrid_reduced model with zp_depth = %s' % self.zp_depth)
+            self.model = MultiBranchReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
             self.model.build()
             
         elif self.exp_type == 'hybrid_vgg':
@@ -171,6 +177,13 @@ class Launcher():
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 # python3 common.py --exp_type hybrid_vgg --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 0
 
+# python3 common.py --exp_type hybrid_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
+# python3 common.py --exp_type hybrid_reduced --zp_depth 256 --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
+
+## GPUSERVER3
+# python3 common.py --exp_type baseline --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 2
+# python3 common.py --exp_type hybrid_reduced --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 3
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_type", required=True)
@@ -181,11 +194,12 @@ if __name__ == '__main__':
     parser.add_argument("--pose_blocks", type=int)
     parser.add_argument("--gpu", required=True)
     parser.add_argument("--name")
+    parser.add_argument("--zp_depth", type=int)
     args = parser.parse_args()
     
     model_folder = exp_init(vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     
-    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks)
+    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth)
     launcher.launch()

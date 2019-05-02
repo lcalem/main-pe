@@ -6,6 +6,7 @@ from tensorflow.keras.layers import Activation, GlobalMaxPooling1D, GlobalMaxPoo
 
 from model import blocks
 from model import layers
+from model.utils import log
 
 
 DEPTH_MAPS = 16
