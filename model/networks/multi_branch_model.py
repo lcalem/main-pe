@@ -48,6 +48,8 @@ class MBMBase(BaseModel):
         self.appearance_model = self.build_appearance_model(self.input_shape)
         time_2 = time.time()
         self.pose_model = self.build_pose_model(self.input_shape)
+        self.log("pose model summary")
+        self.pose_model.summary()
         time_3 = time.time()
         self.decoder_model = self.build_decoder_model((16, 16, self.concat_d))  # i.e. 2048 for the regular model
         time_4 = time.time()
@@ -76,8 +78,10 @@ class MBMBase(BaseModel):
         # model
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
-
-        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
+        
+        train_mpjpe = self.get_train_mpjpe_metric()
+        
+        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr), metrics=[train_mpjpe])
         # self.model.compile(loss=losses, optimizer=Adam())
         
         if self.verbose:
@@ -157,6 +161,12 @@ class MBMBase(BaseModel):
     def get_losses_outputs(self):
         '''
         losses and outputs of the model
+        '''
+        raise NotImplementedError
+        
+    def get_train_mpjpe_metric(self):
+        '''
+        mpjpe for a batch to follow performance / overfitting during training
         '''
         raise NotImplementedError
         

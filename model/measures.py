@@ -41,8 +41,8 @@ def mean_distance_error(y_true, y_pred):
     # print ('Average valid distance: {}'.format(match.mean()))
 
     return match.sum() / valid.sum()
-
-
+    
+    
 def eval_human36m_sc_error(model,
                            num_blocks,
                            x,

@@ -91,6 +91,7 @@ class Human36M(object):
 
     def load_annotations(self, filename):
         try:
+            # sequences here is a list of 3: test sequences, train sequences, val sequences
             self.sequences, self.action_labels, self.joint_labels = load_h36m_mat_annotation(filename)
             self.frame_idx = [serialize_index_sequences(self.sequences[0]),
                     serialize_index_sequences(self.sequences[1]),
@@ -105,6 +106,10 @@ class Human36M(object):
 
 
     def get_data(self, key, mode, frame_list=None, fast_crop=False):
+        '''
+        pose_w: data loaded from the annotation file and formatted to the self.poselayout format (= picking out joints)
+        pose: 
+        '''
         output = {}
 
         if mode == TRAIN_MODE:
@@ -126,25 +131,24 @@ class Human36M(object):
             seq = self.sequences[mode][seq_idx]
             objframes = seq.frames[[frame_idx]]
 
-        """Build a Camera object"""
+        # Build a Camera object
         cpar = seq.camera_parameters
         cam = Camera(cpar.R, cpar.T, cpar.f, cpar.c, cpar.p, cpar.k)
 
-        """Load and project the poses"""
+        # Load and project the poses
         pose_w = self.load_pose_annot(objframes)
         pose_uvd = cam.project(np.reshape(pose_w, (-1, 3)))
         pose_uvd = np.reshape(pose_uvd,
                 (len(objframes), self.poselayout.num_joints, 3))
 
-        """Compute GT bouding box."""
+        # Compute GT bouding box
         imgsize = (objframes[0].w, objframes[0].h)
         objpos, winsize, zrange = bbox.get_crop_params(pose_uvd[:, 0, :],
                 imgsize, cam.f, dconf['scale'])
 
         objpos += dconf['scale'] * np.array([dconf['transx'], dconf['transy']])
         frames = np.empty((len(objframes),) + self.dataconf.input_shape)
-        pose = np.empty((len(objframes), self.poselayout.num_joints,
-            self.poselayout.dim))
+        pose = np.empty((len(objframes), self.poselayout.num_joints, self.poselayout.dim))
 
         for i in range(len(objframes)):
             image = 'images/%s/%05d.jpg' % (seq.name, objframes[i].f)
@@ -167,13 +171,12 @@ class Human36M(object):
             if imgt.hflip:
                 pose[i, :, :] = pose[i, self.poselayout.map_hflip, :]
 
-        """Set outsider body joints to invalid (-1e9)."""
+        # Set outsider body joints to invalid (-1e9) 
         pose = np.reshape(pose, (-1, self.poselayout.dim))
         pose[np.isnan(pose)] = -1e9
         v = np.expand_dims(get_visible_joints(pose[:,0:2]), axis=-1)
         pose[(v==0)[:,0],:] = -1e9
-        pose = np.reshape(pose, (len(objframes), self.poselayout.num_joints,
-            self.poselayout.dim))
+        pose = np.reshape(pose, (len(objframes), self.poselayout.num_joints, self.poselayout.dim))
         v = np.reshape(v, (len(objframes), self.poselayout.num_joints, 1))
 
         pose = np.concatenate((pose, v), axis=-1)
@@ -190,17 +193,15 @@ class Human36M(object):
         output['pose'] = pose
         output['frame'] = frames
 
-        """Take the last transformation matrix, it should not change"""
+        # Take the last transformation matrix, it should be the same for all frames
         output['afmat'] = imgt.afmat.copy()
 
         return output
 
     def load_pose_annot(self, frames):
-        p = np.empty((len(frames), self.poselayout.num_joints,
-            self.poselayout.dim))
+        p = np.empty((len(frames), self.poselayout.num_joints, self.poselayout.dim))
         for i in range(len(frames)):
-            p[i,:] = frames[i].pose3d.T[self.poselayout.map_from_h36m,
-                    0:self.poselayout.dim].copy()
+            p[i,:] = frames[i].pose3d.T[self.poselayout.map_from_h36m, 0:self.poselayout.dim].copy()
 
         return p
 

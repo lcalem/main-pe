@@ -38,8 +38,9 @@ class _pa17j():
     map_hflip = [0, 1, 2, 3, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 16]
 
     """Projections from other layouts to the PA17J standard"""
-    map_from_h36m = \
-            [0, 12, 13, 15, 25, 17, 26, 18, 27, 19, 1, 6, 2, 7, 3, 8, 11]
+    
+    # H36M -> PA17J : ['Hips', 'Spine1', 'Neck', 'Site', 'RightArm', 'LeftArm', 'RightForeArm', 'LeftForeArm', 'RightHand', 'LeftHand', 'RightUpLeg', 'LeftUpLeg', 'RightLeg', 'LeftLeg', 'RightFoot', 'LeftFoot', 'Spine']
+    map_from_h36m = [0, 12, 13, 15, 25, 17, 26, 18, 27, 19, 1, 6, 2, 7, 3, 8, 11]
     map_from_ntu = _pa16j.map_from_ntu + [1]
     map_from_mpii3dhp = \
             [4, 5, 6, 7, 14, 9, 15, 10, 16, 11, 23, 18, 24, 19, 25, 20, 3]
