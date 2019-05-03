@@ -103,17 +103,18 @@ class Launcher():
         # validation data
         h36m_val = BatchLoader(h36m, 
                                ['frame'], 
-                               ['pose_w', 'pose_uvd', 'afmat', 'camera'], 
+                               ['pose_w', 'pose_uvd', 'rootz', 'afmat', 'camera'], 
                                VALID_MODE, 
                                batch_size=h36m.get_length(VALID_MODE), 
                                shuffle=True)
         
         log.printcn(log.OKBLUE, 'Preloading Human3.6M validation samples...')
-        [x_val], [pw_val, puvd_val, afmat_val, scam_val] = h36m_val[0]
+        [x_val], [pw_val, puvd_val, rootz, afmat_val, scam_val] = h36m_val[0]
+        assert rootz == puvd_val[:,0,2]
     
         # callbacks
         cb_list = list()
-        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, puvd_val[:,0,2], scam_val, pose_only=self.pose_only, logdir=self.model_folder)
+        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, rootz, scam_val, pose_only=self.pose_only, logdir=self.model_folder)
         
         logs_folder = os.environ['HOME'] + '/pe_experiments/tensorboard/' + self.model_folder.split('/')[-1]
         print('Tensorboard log folder %s' % logs_folder)

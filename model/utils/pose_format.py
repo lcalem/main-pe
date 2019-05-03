@@ -34,25 +34,23 @@ class _pa17j():
     '''
     num_joints = 17
 
-    """Horizontal flip mapping"""
+    # Horizontal flip mapping
     map_hflip = [0, 1, 2, 3, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 16]
 
-    """Projections from other layouts to the PA17J standard"""
+    # Projections from other layouts to the PA17J standard
     
     # H36M -> PA17J : ['Hips', 'Spine1', 'Neck', 'Site', 'RightArm', 'LeftArm', 'RightForeArm', 'LeftForeArm', 'RightHand', 'LeftHand', 'RightUpLeg', 'LeftUpLeg', 'RightLeg', 'LeftLeg', 'RightFoot', 'LeftFoot', 'Spine']
     map_from_h36m = [0, 12, 13, 15, 25, 17, 26, 18, 27, 19, 1, 6, 2, 7, 3, 8, 11]
     map_from_ntu = _pa16j.map_from_ntu + [1]
-    map_from_mpii3dhp = \
-            [4, 5, 6, 7, 14, 9, 15, 10, 16, 11, 23, 18, 24, 19, 25, 20, 3]
-    map_from_mpii3dhp_te = \
-            [14, 1, 16, 0, 2, 5, 3, 6, 4, 7, 8, 11, 9, 12, 10, 13, 15]
+    map_from_mpii3dhp = [4, 5, 6, 7, 14, 9, 15, 10, 16, 11, 23, 18, 24, 19, 25, 20, 3]
+    map_from_mpii3dhp_te = [14, 1, 16, 0, 2, 5, 3, 6, 4, 7, 8, 11, 9, 12, 10, 13, 15]
 
-    """Projections of PA17J to other formats"""
+    # Projections of PA17J to other formats
     map_to_pa13j = _pa16j.map_to_pa13j
     map_to_mpii = [14, 12, 10, 11, 13, 15, 0, 1, 2, 3, 8, 6, 4, 5, 7, 9]
     map_to_pa16j = list(range(16))
 
-    """Color map"""
+    # Color map
     color = ['g', 'r', 'b', 'y', 'm']
     cmap = [0, 0, 0, 0, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4, 3, 4, 0]
     links = [[0, 16], [16, 1], [1, 2], [2, 3], [4, 6], [6, 8], [5, 7], [7, 9],

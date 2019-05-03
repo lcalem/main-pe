@@ -107,8 +107,10 @@ class Human36M(object):
 
     def get_data(self, key, mode, frame_list=None, fast_crop=False):
         '''
-        pose_w: data loaded from the annotation file and formatted to the self.poselayout format (= picking out joints)
-        pose: 
+        pose_w:     ground truth data in millimeters
+                    loaded from the annotation file and formatted to the self.poselayout format (= picking out joints)
+        pose_uvd:   same but with xy coords given in pixels (uv) and depth (d) in millimeters
+        pose:       same format as pose_uvd but with all transformations (crop, hflip, etc) applied
         '''
         output = {}
 
@@ -138,8 +140,7 @@ class Human36M(object):
         # Load and project the poses
         pose_w = self.load_pose_annot(objframes)
         pose_uvd = cam.project(np.reshape(pose_w, (-1, 3)))
-        pose_uvd = np.reshape(pose_uvd,
-                (len(objframes), self.poselayout.num_joints, 3))
+        pose_uvd = np.reshape(pose_uvd, (len(objframes), self.poselayout.num_joints, 3))
 
         # Compute GT bouding box
         imgsize = (objframes[0].w, objframes[0].h)
@@ -163,10 +164,8 @@ class Human36M(object):
             frames[i, :, :, :] = transform.normalize_channels(imgt.asarray(),
                     channel_power=dconf['chpower'])
 
-            pose[i, :, 0:2] = transform.transform_2d_points(imgt.afmat,
-                    pose_uvd[i, :,0:2], transpose=True)
-            pose[i, :, 2] = \
-                    (pose_uvd[i, :, 2] - zrange[0]) / (zrange[1] - zrange[0])
+            pose[i, :, 0:2] = transform.transform_2d_points(imgt.afmat, pose_uvd[i, :,0:2], transpose=True)
+            pose[i, :, 2] = (pose_uvd[i, :, 2] - zrange[0]) / (zrange[1] - zrange[0])
 
             if imgt.hflip:
                 pose[i, :, :] = pose[i, self.poselayout.map_hflip, :]
@@ -189,6 +188,7 @@ class Human36M(object):
         output['camera'] = cam.serialize()
         output['action'] = int(seq.name[1:3]) - 1
         output['pose_w'] = pose_w
+        output['rootz'] = pose_uvd[:,0,2]
         output['pose_uvd'] = pose_uvd
         output['pose'] = pose
         output['frame'] = frames
