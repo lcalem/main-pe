@@ -15,6 +15,8 @@ from model.networks import BaseModel
 from model.networks.decoder_model import DecoderModel
 from model.networks.pose_model import PoseModel
 
+from model import metrics
+
 
 class MBMBase(BaseModel):
     '''
@@ -48,8 +50,6 @@ class MBMBase(BaseModel):
         self.appearance_model = self.build_appearance_model(self.input_shape)
         time_2 = time.time()
         self.pose_model = self.build_pose_model(self.input_shape)
-        self.log("pose model summary")
-        self.pose_model.summary()
         time_3 = time.time()
         self.decoder_model = self.build_decoder_model((16, 16, self.concat_d))  # i.e. 2048 for the regular model
         time_4 = time.time()
@@ -79,9 +79,9 @@ class MBMBase(BaseModel):
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
         
-        train_mpjpe = self.get_train_mpjpe_metric()
+        train_mpjpe = self.get_mpjpe_metric()
         
-        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr), metrics=[train_mpjpe])
+        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr), metrics={'PoseOutput1': train_mpjpe})
         # self.model.compile(loss=losses, optimizer=Adam())
         
         if self.verbose:
@@ -164,12 +164,11 @@ class MBMBase(BaseModel):
         '''
         raise NotImplementedError
         
-    def get_train_mpjpe_metric(self):
+    def get_mpjpe_metric(self, pose_only=False):
         '''
         mpjpe for a batch to follow performance / overfitting during training
         '''
-        raise NotImplementedError
-        
+        return metrics.MPJPEMetric(self.n_blocks, pose_only=pose_only)
         
         
 
