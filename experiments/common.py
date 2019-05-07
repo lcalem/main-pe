@@ -19,7 +19,7 @@ from model import callbacks
 from model.networks.cycle_model import CycleModel
 from model.networks.multi_branch_model import MultiBranchModel
 from model.networks.mbm_vgg import MultiBranchVGGModel
-from model.networks.mbm_reduced import MultiBranchReduced
+from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
 from model.utils import pose_format, log
 
 
@@ -73,7 +73,7 @@ class Launcher():
         self.zp_depth = zp_depth
         
         if zp_depth is not None:
-            assert exp_type == 'hybrid_reduced', 'zp_depth is an option for hybrid_reduced model'
+            assert exp_type in ['hybrid_reduced', 'hybrid_stop'], 'zp_depth is an option for hybrid_reduced model'
         
         self.pose_only = True if exp_type == 'baseline' else False
         
@@ -103,18 +103,18 @@ class Launcher():
         # validation data
         h36m_val = BatchLoader(h36m, 
                                ['frame'], 
-                               ['pose_w', 'pose_uvd', 'rootz', 'afmat', 'camera'], 
+                               ['pose_w', 'pose_uvd', 'afmat', 'camera'], 
                                VALID_MODE, 
                                batch_size=h36m.get_length(VALID_MODE), 
                                shuffle=True)
         
         log.printcn(log.OKBLUE, 'Preloading Human3.6M validation samples...')
-        [x_val], [pw_val, puvd_val, rootz, afmat_val, scam_val] = h36m_val[0]
-        assert rootz == puvd_val[:,0,2]
+        [x_val], [pw_val, puvd_val, afmat_val, scam_val] = h36m_val[0]
+        # assert rootz == puvd_val[:,0,2]
     
         # callbacks
         cb_list = list()
-        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, rootz, scam_val, pose_only=self.pose_only, logdir=self.model_folder)
+        eval_callback = callbacks.H36MEvalCallback(self.pose_blocks, x_val, pw_val, afmat_val, puvd_val[:,0,2], scam_val, pose_only=self.pose_only, logdir=self.model_folder)
         
         logs_folder = os.environ['HOME'] + '/pe_experiments/tensorboard/' + self.model_folder.split('/')[-1]
         print('Tensorboard log folder %s' % logs_folder)
@@ -135,7 +135,7 @@ class Launcher():
     def get_h36m_outputs(self):
         if self.exp_type == 'baseline':
             return ['pose'] * self.pose_blocks
-        elif self.exp_type in ['hybrid', 'hybrid_reduced']:
+        elif self.exp_type.startswith('hybrid'):
             return ['frame'] + ['pose'] * self.pose_blocks
         elif self.exp_type == 'hybrid_vgg':
             return ['phony'] * 3 + ['pose'] * self.pose_blocks
@@ -165,9 +165,16 @@ class Launcher():
             self.model = MultiBranchVGGModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
+        elif self.exp_type == 'hybrid_stop':
+            self.model = MultiBranchStopped(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
+            self.model.build()
+            
         elif self.exp_type == 'cycle':
             self.model = CycleModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
+            
+        else:
+            raise Exception('Unknown exp type %s' % self.exp_type)
     
 
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 2
@@ -180,6 +187,8 @@ class Launcher():
 
 # python3 common.py --exp_type hybrid_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 # python3 common.py --exp_type hybrid_reduced --zp_depth 256 --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
+
+# python3 common.py --exp_type hybrid_stop --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
 
 ## GPUSERVER3
 # python3 common.py --exp_type baseline --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 2
@@ -195,7 +204,7 @@ if __name__ == '__main__':
     parser.add_argument("--pose_blocks", type=int)
     parser.add_argument("--gpu", required=True)
     parser.add_argument("--name")
-    parser.add_argument("--zp_depth", type=int)
+    parser.add_argument("--zp_depth", type=int, default=128)
     args = parser.parse_args()
     
     model_folder = exp_init(vars(args))

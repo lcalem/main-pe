@@ -188,10 +188,10 @@ class Human36M(object):
         output['camera'] = cam.serialize()
         output['action'] = int(seq.name[1:3]) - 1
         output['pose_w'] = pose_w
-        output['rootz'] = pose_uvd[:,0,2]
+        output['rootz'] = pose_uvd[0,2]
         output['pose_uvd'] = pose_uvd
         output['pose'] = pose
-        output['frame'] = frames
+        output['frame'] = frames 
 
         # Take the last transformation matrix, it should be the same for all frames
         output['afmat'] = imgt.afmat.copy()
@@ -221,21 +221,18 @@ class Human36M(object):
         if dictkey == 'frame':
             return self.clip_shape() + self.dataconf.input_shape
         if dictkey == 'pose':
-            return self.clip_shape() \
-                    + (self.poselayout.num_joints, self.poselayout.dim+1)
+            return self.clip_shape() + (self.poselayout.num_joints, self.poselayout.dim+1)
         if dictkey == 'pose_w':
-            return self.clip_shape() \
-                    + (self.poselayout.num_joints, self.poselayout.dim)
+            return self.clip_shape() + (self.poselayout.num_joints, self.poselayout.dim)
         if dictkey == 'pose_uvd':
-            return self.clip_shape() \
-                    + (self.poselayout.num_joints, self.poselayout.dim)
+            return self.clip_shape() + (self.poselayout.num_joints, self.poselayout.dim)
         if dictkey == 'action':
             return (1,)
         if dictkey == 'camera':
             return (21,)
         if dictkey == 'afmat':
             return (3, 3)
-        raise Exception('Invalid dictkey on get_shape!')
+        raise Exception('Invalid dictkey %s on get_shape!' % dictkey)
 
     def get_length(self, mode):
         if self.topology == 'sequences':

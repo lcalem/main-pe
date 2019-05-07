@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from tensorflow.keras import Model
+from tensorflow.keras.layers import concatenate
 
 from model.losses import pose_loss, reconstruction_loss
 
@@ -49,14 +50,14 @@ class MultiBranchReduced(MBMBase):
         output: 16 x 16 x 128
         '''
         enc_model = ResNet18(input_shape=input_shape, top=None)
-        self.log("full ResNet18 model summary")
-        enc_model.summary()
+        # self.log("full ResNet18 model summary")
+        # enc_model.summary()
         output_layer = enc_model.layers[-33]  # index of the 16 x 16 x 128 activation we want, before the last resnet block (68 for ResNet34)
         assert output_layer.name.startswith('activation')
         
         partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output, name='appearance_model')
-        self.log("partial appearance summary")
-        partial_model.summary()
+        # self.log("partial appearance summary")
+        # partial_model.summary()
         return partial_model
 
     def build_decoder_model(self, input_shape):
@@ -69,3 +70,14 @@ class MultiBranchReduced(MBMBase):
         '''
         return DecoderModel(input_shape=input_shape).model
     
+    
+
+class MultiBranchStopped(MultiBranchReduced):
+    '''
+    stopped gradients between decoder and Ep
+    '''
+
+    def concat(self, z_a, z_p):
+        tf.keras.backend.stop_gradient(z_p)
+        concat = concatenate([z_a, z_p], name='z_concat')
+        return concat
