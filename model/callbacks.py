@@ -16,21 +16,17 @@ class SaveModel(Callback):
         self.verbose = verbose
 
     def on_epoch_end(self, epoch, logs=None):
-
-        save_file = os.path.join(self.model_folder, 'weights_{epoch:03d}.h5').format(epoch=epoch + 1)
-        
-        if self.verbose:
-            print('\nSaving model @epoch=%03d to %s' % (epoch + 1, save_file))
-                
-        self.model.save_weights(save_file)
-        
-#        save_file = os.path.join(self.model_folder, 'model_{epoch:03d}.h5').format(epoch=epoch + 1)        
-#        try:
-#            save_model(self.model, save_file)
-#        except Exception as e:
-#            save_file = os.path.join(self.model_folder, 'weights_{epoch:03d}.h5').format(epoch=epoch + 1)
-#            print("Couldn't save model, saving weights instead at %s" % save_file)
-#            self.model.save_weights(save_file)
+    
+        save_file = os.path.join(self.model_folder, 'model_{epoch:03d}.h5').format(epoch=epoch + 1)        
+        try:
+            if self.verbose:
+                print('\nTrying to save model @epoch=%03d to %s' % (epoch + 1, save_file))
+            
+            save_model(self.model, save_file)
+        except Exception as e:
+            save_file = os.path.join(self.model_folder, 'weights_{epoch:03d}.h5').format(epoch=epoch + 1)
+            print("Couldn't save model, saving weights instead at %s" % save_file)
+            self.model.save_weights(save_file)
 
             
 class H36MEvalCallback(Callback):
