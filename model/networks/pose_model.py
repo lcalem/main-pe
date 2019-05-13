@@ -185,6 +185,9 @@ class PoseModel(object):
         Static model (1D soft argmax on z axis)
         Only for dim 3
         '''
+        if self.dim == 2:
+            return None
+        
         input_shape = (self.depth_maps, self.n_joints)
         name_sm = 'zSAM_softmax'
 

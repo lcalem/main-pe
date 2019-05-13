@@ -17,6 +17,7 @@ from data.loader import BatchLoader
 from model import config
 from model import callbacks
 from model.networks.cycle_model import CycleModel
+from model.networks.cycle_reduced import CycleReduced
 from model.networks.multi_branch_model import MultiBranchModel
 from model.networks.mbm_vgg import MultiBranchVGGModel
 from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
@@ -73,7 +74,7 @@ class Launcher():
         self.zp_depth = zp_depth
         
         if zp_depth is not None:
-            assert exp_type in ['hybrid_reduced', 'hybrid_stop'], 'zp_depth is an option for hybrid_reduced model'
+            assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced'], 'zp_depth is an option for hybrid_reduced model'
         
         self.pose_only = True if exp_type == 'baseline' else False
         
@@ -139,7 +140,7 @@ class Launcher():
             return ['frame'] + ['pose'] * self.pose_blocks
         elif self.exp_type == 'hybrid_vgg':
             return ['phony'] * 3 + ['pose'] * self.pose_blocks
-        elif self.exp_type == 'cycle':
+        elif self.exp_type.startswith('cycle'):
             return ['frame'] + ['pose'] * self.pose_blocks + ['phony'] * 3
         else:
             raise Exception('Unknown exp_type %s' % self.exp_type)
@@ -173,6 +174,10 @@ class Launcher():
             self.model = CycleModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
+        elif self.exp_type == 'cycle_reduced':
+            self.model = CycleReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model.build()
+            
         else:
             raise Exception('Unknown exp type %s' % self.exp_type)
     
@@ -189,6 +194,7 @@ class Launcher():
 # python3 common.py --exp_type hybrid_reduced --zp_depth 256 --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
 
 # python3 common.py --exp_type hybrid_stop --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
+# python3 common.py --exp_type cycle_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 
 ## GPUSERVER3
 # python3 common.py --exp_type baseline --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 2
