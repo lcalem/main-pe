@@ -119,8 +119,13 @@ def cycle_loss():
     
     def _cycle_loss(y_true, y_pred):
         print("cycle y_pred shape %s" % (str(y_pred.shape)))
-        z_x = y_pred[:,:,:,:1024]
-        z_x_cycle = y_pred[:,:,:,1024:]
+        depth = y_pred.get_shape().as_list()[-1]
+        print("depth %s" % depth)
+        assert depth % 2 == 0
+        half = int(depth / 2)
+  
+        z_x = y_pred[:,:,:,:half]
+        z_x_cycle = y_pred[:,:,:,half:]
         print("z_x shape %s, z_x_cycle shape %s" % (str(z_x.shape), str(z_x_cycle.shape)))
         l2 = tf.math.square(z_x - z_x_cycle)
         return l2

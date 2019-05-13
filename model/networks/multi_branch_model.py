@@ -46,31 +46,16 @@ class MBMBase(BaseModel):
     def build(self):
         
         # build everything
-        time_1 = time.time()
-        self.appearance_model = self.build_appearance_model(self.input_shape)
-        time_2 = time.time()
-        self.pose_model = self.build_pose_model(self.input_shape)
-        time_3 = time.time()
-        self.decoder_model = self.build_decoder_model((16, 16, self.concat_d))  # i.e. 2048 for the regular model
-        time_4 = time.time()
-        
-        self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
+        self.build_everything()
         
         inp = Input(shape=self.input_shape, name='image_input')
         self.log("Input shape %s" % str(inp.shape))
         
         # encoders
-        z_a = self.appearance_model(inp)
-        assert z_a.shape.as_list() == [None, 16, 16, self.za_depth], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
-        pose_outputs = self.pose_model(inp)
-
-        poses, z_p = self.check_pose_output(pose_outputs)
-        self.log("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
+        z_a, z_p, poses = self.call_encoders(inp)
 
         # decoder
-        concat = self.concat(z_a, z_p)
-        assert concat.shape.as_list() == [None, 16, 16, self.concat_d], 'wrong concat shape %s' % str(concat.shape)
-        i_hat = self.decoder_model(concat)
+        i_hat = self.concat_and_decode(z_a, z_p)
 
         # losses and outputs
         losses, outputs = self.get_losses_outputs(i_hat, poses)
@@ -88,6 +73,43 @@ class MBMBase(BaseModel):
             self.log("Final model summary")
             self.model.summary()
         
+    def build_everything(self):
+        '''
+        pose model
+        appearance model
+        decoder model
+        '''
+        time_1 = time.time()
+        self.appearance_model = self.build_appearance_model(self.input_shape)
+        time_2 = time.time()
+        self.pose_model = self.build_pose_model(self.input_shape)
+        time_3 = time.time()
+        self.decoder_model = self.build_decoder_model((16, 16, self.concat_d))  # i.e. 2048 for the regular model
+        time_4 = time.time()
+        
+        self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
+        
+    def call_encoders(self, inp):
+        '''
+        inp -> E_a -> z_a
+        inp -> E_p -> z_p, poses
+        '''
+        z_a = self.appearance_model(inp)
+        assert z_a.shape.as_list() == [None, 16, 16, self.za_depth], 'wrong shape for z_a %s' % str(z_a.shape.as_list())
+        pose_outputs = self.pose_model(inp)
+        
+        poses, z_p = self.check_pose_output(pose_outputs)
+        self.log("Shape z_a %s, shape z_p %s" % (str(z_a.shape), str(z_p.shape)))
+        
+        return z_a, z_p, poses
+       
+    def concat_and_decode(self, z_a, z_p):
+        concat = self.concat(z_a, z_p)
+        assert concat.shape.as_list() == [None, 16, 16, self.concat_d], 'wrong concat shape %s' % str(concat.shape)
+        i_hat = self.decoder_model(concat)
+        
+        return i_hat
+                
     def build_pose_only(self):
         '''
         Only the pose branch will be built and activated, no concat, no decoder
