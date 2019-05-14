@@ -24,15 +24,18 @@ from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
 from model.utils import pose_format, log
 
 
-def exp_init(params):
+def exp_init(params, base_folder=None):
     '''
     common actions for setuping an experiment:
     - create experiment folder
     - dump config in it
     - dump current model code in it (because for now we only save weights)
     '''
+    if base_folder is None:
+        base_folder = os.environ['HOME']
+        
     # model folder
-    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (os.environ['HOME'], datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
+    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (base_folder, datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
     os.makedirs(model_folder)
     print("Conducting experiment for %s epochs and %s blocks in folder %s" % (params['n_epochs'], params['pose_blocks'], model_folder))
 
