@@ -41,6 +41,6 @@ class DecoderModel(object):
         # i_hat = Permute((2, 3))(perm)
         i_hat = up
 
-        self._model = Model(inputs=z_a, outputs=i_hat, name='decoder')
+        self._model = Model(inputs=z_a, outputs=i_hat, name='old_decoder')
 
 

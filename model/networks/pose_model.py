@@ -19,6 +19,7 @@ class PoseModel(object):
         zp_depth: number of channels for the z_p output.
             defaults to 1024 (it is None here for the warning check) and is used only if pose_only is False
         '''
+        print("input shape %s, dim %s, n_joints %s, n_blocks %s, kernel size %s, pose_only %s, zp_depth %s, vebose %s" % (str(input_shape), dim, n_joints, n_blocks, str(kernel_size), pose_only, zp_depth, verbose))
         self.dim = dim
         
         self.n_joints = n_joints

@@ -4,11 +4,14 @@ from tensorflow.keras import Model, Input
 
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.layers import concatenate
 
 from model.losses import pose_loss
 from model.losses import reconstruction_loss
 
 from model.networks import BaseModel
+# from model.networks.decoder_model import DecoderModel
+# from model.networks.pose_model import PoseModel
 from model.networks.old_decoder import DecoderModel
 from model.networks.old_pose import PoseModel
 
@@ -109,12 +112,13 @@ class MultiBranchModel(BaseModel):
         input: 256 x 256 x 3
         output: [(n_joints, dim + 1) * n_blocks, (16, 16, zp_depth)]   (zp_depth = 1024 or 128)
         '''
+        # return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size, pose_only=pose_only, zp_depth=self.zp_depth, verbose=self.verbose).model
         return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
     
     def build_decoder_model(self, input_shape):
         '''
         from concatenated representations to image reconstruction
-        input: 16 x 16 x 1024 (z_a and z_p concatenated)    [or 256]
+        input: 16 x 16 x 2048 (z_a and z_p concatenated)    [or 256]
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model
@@ -123,11 +127,14 @@ class MultiBranchModel(BaseModel):
         '''
         concat pose and appearance representations before decoding
         input:
-            - z_p:
+            - z_p: 16 x 16 x 1024
             - z_a: 16 x 16 x 1024
         output:
+        concat 16 x 16 x 2048
 
         '''
+        # concat = concatenate([z_a, z_a], name='z_concat')
+        # return concat
         return z_a
     
     def check_pose_output(self, pose_outputs):
