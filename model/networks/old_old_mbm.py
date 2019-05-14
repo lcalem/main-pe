@@ -10,7 +10,7 @@ from model.losses import reconstruction_loss
 
 from model.networks import BaseModel
 from model.networks.old_old_decoder import DecoderModel
-from model.networks.old_pose import PoseModel
+from model.networks.old_old_pose import PoseModel
 
 
 class MultiBranchModel(BaseModel):
@@ -34,18 +34,23 @@ class MultiBranchModel(BaseModel):
         BaseModel.__init__(self)
 
     def build(self):
-        self.build_everything()
-        
         inp = Input(shape=self.input_shape)
-        self.log("Input shape %s" % str(inp.shape))
-        
-        z_a = self.appearance_model(inp)
-        z_p = self.pose_model(inp)
+
+        # encoders
+        time_1 = time.time()
+        z_a = self.appearance_encoder(inp)
+        time_2 = time.time()
+        z_p = self.pose_encoder(inp)
+        time_3 = time.time()
+
+        print("Build E_a %s, build E_p %s" % (time_2 - time_1, time_3 - time_2))
+        print(type(z_a), type(z_p))
+        print("Shape z_a %s" % str(z_a.shape))
 
         # decoder
         concat = self.concat(z_a, z_p)
         print("Shape concat %s" % str(concat.shape))
-        i_hat = self.decoder_model(concat)
+        i_hat = self.decoder(concat)
 
         outputs = [i_hat]
         outputs.extend(z_p)
@@ -90,35 +95,39 @@ class MultiBranchModel(BaseModel):
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
         
-    def build_appearance_model(self, input_shape):
+    def appearance_encoder(self, inp):
         '''
         resnet50 for now
         input: 256 x 256 x 3
         output: 8 x 8 x 2048
         '''
-        enc_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-        # output_layer = enc_model.layers[-33]  # index of the 16 x 16 x za_depth activation we want, before the last resnet block
-        # assert output_layer.name.startswith('activation')
-        
-        partial_model = Model(inputs=enc_model.inputs, outputs=enc_model.output, name='appearance_model')
-        return partial_model
-    
-    def build_pose_model(self, input_shape, pose_only=False):
+        enc_model = ResNet50(include_top=False, weights='imagenet', input_tensor=inp)
+
+        z_a = enc_model.output   # 8 x 8 x 2048
+        return z_a
+
+    def pose_encoder(self, inp):
         '''
         reception / stacked hourglass
         input: 256 x 256 x 3
-        output: [(n_joints, dim + 1) * n_blocks, (16, 16, zp_depth)]   (zp_depth = 1024 or 128)
+        output: [] x 8
         '''
-        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
+        pose_model = PoseModel(inp, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
+        out = pose_model.output
+
+        return out
     
-    def build_decoder_model(self, input_shape):
+    def decoder(self, concat):
         '''
         from concatenated representations to image reconstruction
-        input: 8 x 8 x 2048 (z_a and z_p concatenated)    [or 256]
+        input: 8 x 8 x 2048 (z_a)
         output: 256 x 256 x 3
         '''
-        return DecoderModel(input_shape=input_shape).model
+        decoder_model = DecoderModel(input_tensor=concat).model
+        out = decoder_model(concat)
 
+        return out
+    
     def concat(self, z_a, z_p):
         '''
         concat pose and appearance representations before decoding
