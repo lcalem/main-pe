@@ -10,6 +10,7 @@ from model.losses import reconstruction_loss
 
 from model.networks import BaseModel
 from model.networks.old_decoder import DecoderModel
+# from model.networks.decoder_model import DecoderModel
 from model.networks.old_pose import PoseModel
 
 
