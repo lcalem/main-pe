@@ -34,15 +34,15 @@ class MultiBranchModel(BaseModel):
         BaseModel.__init__(self)
 
     def build(self):
-        self.appearance_model = self.build_appearance_model(self.input_shape)
+        # self.appearance_model = self.build_appearance_model(self.input_shape)
         self.pose_model = self.build_pose_model(self.input_shape)
-        self.decoder_model = self.build_decoder_model((16, 16, 1024))  # i.e. 2048 for the regular model
+        self.decoder_model = self.build_decoder_model((8, 8, 2048))  # i.e. 2048 for the regular model
         
         inp = Input(shape=self.input_shape)
 
         # encoders
-        # z_a = self.appearance_encoder(inp)
-        z_a = self.appearance_model(inp)
+        z_a = self.appearance_encoder(inp)
+        # z_a = self.appearance_model(inp)
         z_p = self.pose_model(inp)
 
         print(type(z_a), type(z_p))
@@ -78,6 +78,17 @@ class MultiBranchModel(BaseModel):
         ploss = [pose_loss()] * len(z_p)
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
+        
+    def appearance_encoder(self, inp):
+        '''
+        resnet50 for now
+        input: 256 x 256 x 3
+        output: 8 x 8 x 2048
+        '''
+        enc_model = ResNet50(include_top=False, weights='imagenet', input_tensor=inp)
+
+        z_a = enc_model.output   # 8 x 8 x 2048
+        return z_a
     
     def build_appearance_model(self, input_shape):
         '''
