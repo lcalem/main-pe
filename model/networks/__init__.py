@@ -40,8 +40,8 @@ class BaseModel(object):
                                  epochs=n_epochs,
                                  callbacks=cb_list,
                                  use_multiprocessing=False,
-                                 max_queue_size=30,
-                                 workers=6,
+                                 max_queue_size=10,
+                                 workers=2,
                                  initial_epoch=0)
         
     def predict(self, data):

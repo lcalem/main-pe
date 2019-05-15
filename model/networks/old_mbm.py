@@ -34,8 +34,8 @@ class MultiBranchModel(BaseModel):
         BaseModel.__init__(self)
 
     def build(self):
-        self.decoder_model = self.build_decoder_model((8, 8, 2048))  # i.e. 2048 for the regular model
         self.appearance_model = self.build_appearance_model(self.input_shape)
+        self.decoder_model = self.build_decoder_model((16, 16, 1024))  # i.e. 2048 for the regular model
         
         inp = Input(shape=self.input_shape)
 
@@ -45,7 +45,7 @@ class MultiBranchModel(BaseModel):
         z_p = self.pose_encoder(inp)
 
         print(type(z_a), type(z_p))
-        print("Shape z_a %s" % str(z_a.shape))
+        print("Shape z_a HELLO %s" % str(z_a.shape))
 
         # decoder
         concat = self.concat(z_a, z_p)
@@ -63,23 +63,6 @@ class MultiBranchModel(BaseModel):
         
         self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
-        
-    def build_everything(self):
-        '''
-        pose model
-        appearance model
-        decoder model
-        '''
-        time_1 = time.time()
-        self.appearance_model = self.build_appearance_model(self.input_shape)
-        time_2 = time.time()
-        self.pose_model = self.build_pose_model(self.input_shape)
-        time_3 = time.time()
-        self.decoder_model = self.build_decoder_model((8, 8, 2048))  # i.e. 2048 for the regular model
-        time_4 = time.time()
-        
-        self.log("Build E_a %s, build E_p %s, decoder D %s" % (time_2 - time_1, time_3 - time_2, time_4 - time_3))
-        
         
     def build_pose_only(self):
         '''
@@ -111,19 +94,19 @@ class MultiBranchModel(BaseModel):
         '''
         resnet50 for now
         input: 256 x 256 x 3
-        output: 8 x 8 x 2048
+        output: 16 x 16 x 1024
         '''
         enc_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-        # output_layer = enc_model.layers[-33]  # index of the 16 x 16 x za_depth activation we want, before the last resnet block
-        # assert output_layer.name.startswith('activation')
+        output_layer = enc_model.layers[-33]  # index of the 16 x 16 x za_depth activation we want, before the last resnet block
+        assert output_layer.name.startswith('activation')
         
-        partial_model = Model(inputs=enc_model.inputs, outputs=enc_model.output, name='appearance_model')
+        partial_model = Model(inputs=enc_model.inputs, outputs=output_layer.output, name='appearance_model')
         return partial_model
     
     def build_decoder_model(self, input_shape):
         '''
         from concatenated representations to image reconstruction
-        input: 8 x 8 x 2048 (z_a)
+        input: 16 x 16 x 1024 (z_a)
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model

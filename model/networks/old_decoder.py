@@ -18,12 +18,7 @@ class DecoderModel(object):
         concat = Input(shape=input_shape)
         # z_a = Input(shape=inp.get_shape().as_list()[1:])  # for now, only the z_a part (8 x 8 x 2048)
 
-        up = layers.up(concat)  # 16 x 16
-        up = layers.conv_bn_act(up, 512, (3, 3))
-        up = layers.conv_bn_act(up, 512, (3, 3))
-        up = layers.conv_bn_act(up, 512, (3, 3))
-
-        up = layers.up(up)  # 32 x 32
+        up = layers.up(concat)  # 32 x 32
         up = layers.conv_bn_act(up, 512, (3, 3))
         up = layers.conv_bn_act(up, 512, (3, 3))
         up = layers.conv_bn_act(up, 256, (3, 3))
