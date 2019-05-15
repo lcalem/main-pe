@@ -35,17 +35,15 @@ class MultiBranchModel(BaseModel):
 
     def build(self):
         self.decoder_model = self.build_decoder_model((8, 8, 2048))  # i.e. 2048 for the regular model
+        self.appearance_model = self.build_appearance_model(self.input_shape)
         
         inp = Input(shape=self.input_shape)
 
         # encoders
-        time_1 = time.time()
-        z_a = self.appearance_encoder(inp)
-        time_2 = time.time()
+        # z_a = self.appearance_encoder(inp)
+        z_a = self.appearance_model(inp)
         z_p = self.pose_encoder(inp)
-        time_3 = time.time()
 
-        print("Build E_a %s, build E_p %s" % (time_2 - time_1, time_3 - time_2))
         print(type(z_a), type(z_p))
         print("Shape z_a %s" % str(z_a.shape))
 
@@ -97,16 +95,6 @@ class MultiBranchModel(BaseModel):
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
         
-    def appearance_encoder(self, inp):
-        '''
-        resnet50 for now
-        input: 256 x 256 x 3
-        output: 8 x 8 x 2048
-        '''
-        enc_model = ResNet50(include_top=False, weights='imagenet', input_tensor=inp)
-
-        z_a = enc_model.output   # 8 x 8 x 2048
-        return z_a
 
     def pose_encoder(self, inp):
         '''
@@ -119,6 +107,19 @@ class MultiBranchModel(BaseModel):
 
         return out
     
+    def build_appearance_model(self, input_shape):
+        '''
+        resnet50 for now
+        input: 256 x 256 x 3
+        output: 8 x 8 x 2048
+        '''
+        enc_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
+        # output_layer = enc_model.layers[-33]  # index of the 16 x 16 x za_depth activation we want, before the last resnet block
+        # assert output_layer.name.startswith('activation')
+        
+        partial_model = Model(inputs=enc_model.inputs, outputs=enc_model.output, name='appearance_model')
+        return partial_model
+    
     def build_decoder_model(self, input_shape):
         '''
         from concatenated representations to image reconstruction
@@ -126,17 +127,6 @@ class MultiBranchModel(BaseModel):
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model
-    
-    def decoder(self, concat):
-        '''
-        from concatenated representations to image reconstruction
-        input: 8 x 8 x 2048 (z_a)
-        output: 256 x 256 x 3
-        '''
-        decoder_model = DecoderModel(input_tensor=concat).model
-        out = decoder_model(concat)
-
-        return out
     
     def concat(self, z_a, z_p):
         '''
