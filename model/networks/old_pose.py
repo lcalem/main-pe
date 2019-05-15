@@ -13,7 +13,7 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_tensor, dim, n_joints, n_blocks, kernel_size):
+    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size):
         self.dim = dim
         
         self.n_joints = n_joints
@@ -28,18 +28,19 @@ class PoseModel(object):
         else:
             raise Exception('Dim can only be 2 or 3 (was %s)' % dim)
 
-        self.build(input_tensor)
+        self.build(input_shape)
 
     @property
     def model(self):
         return self._model
 
-    def build(self, inp):
+    def build(self, input_shape):
         '''
         1. stem
         2. stacking the blocks
         '''
 
+        inp = Input(shape=input_shape)
         outputs = list()
         x = self.stem(inp)
 

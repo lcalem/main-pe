@@ -35,6 +35,7 @@ class MultiBranchModel(BaseModel):
 
     def build(self):
         self.appearance_model = self.build_appearance_model(self.input_shape)
+        self.pose_model = self.build_pose_model(self.input_shape)
         self.decoder_model = self.build_decoder_model((16, 16, 1024))  # i.e. 2048 for the regular model
         
         inp = Input(shape=self.input_shape)
@@ -42,7 +43,7 @@ class MultiBranchModel(BaseModel):
         # encoders
         # z_a = self.appearance_encoder(inp)
         z_a = self.appearance_model(inp)
-        z_p = self.pose_encoder(inp)
+        z_p = self.pose_model(inp)
 
         print(type(z_a), type(z_p))
         print("Shape z_a HELLO %s" % str(z_a.shape))
@@ -77,18 +78,6 @@ class MultiBranchModel(BaseModel):
         ploss = [pose_loss()] * len(z_p)
         self.model.compile(loss=ploss, optimizer=RMSprop(lr=self.start_lr))
         self.model.summary()
-        
-
-    def pose_encoder(self, inp):
-        '''
-        reception / stacked hourglass
-        input: 256 x 256 x 3
-        output: [] x 8
-        '''
-        pose_model = PoseModel(inp, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
-        out = pose_model.output
-
-        return out
     
     def build_appearance_model(self, input_shape):
         '''
@@ -110,6 +99,14 @@ class MultiBranchModel(BaseModel):
         output: 256 x 256 x 3
         '''
         return DecoderModel(input_shape=input_shape).model
+    
+    def build_pose_model(self, input_shape, pose_only=False):
+        '''
+        reception / stacked hourglass
+        input: 256 x 256 x 3
+        output: [(n_joints, dim + 1) * n_blocks, (16, 16, zp_depth)]   (zp_depth = 1024 or 128)
+        '''
+        return PoseModel(input_shape, self.dim, self.n_joints, self.n_blocks, self.reception_kernel_size).model
     
     def concat(self, z_a, z_p):
         '''
