@@ -11,6 +11,7 @@ tornado==4.5.3
 ipython==6.5.0
 
 Pillow==5.4.1
+matplotlib==2.2.3
 
 h5py
 numpy
