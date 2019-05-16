@@ -36,6 +36,8 @@ class MultiBranchModel(BaseModel):
     def build(self):
         # self.appearance_model = self.build_appearance_model(self.input_shape)
         self.pose_model = self.build_pose_model(self.input_shape)
+        print("pose model summary")
+        self.pose_model.summary()
         self.decoder_model = self.build_decoder_model((8, 8, 2048))  # i.e. 2048 for the regular model
         
         inp = Input(shape=self.input_shape)
@@ -47,18 +49,20 @@ class MultiBranchModel(BaseModel):
 
         print(type(z_a), type(z_p))
         print("Shape z_a HELLO %s" % str(z_a.shape))
+        print("Shape z_p %s" % str(z_p.shape))
 
         # decoder
         concat = self.concat(z_a, z_p)
         print("Shape concat %s" % str(concat.shape))
         i_hat = self.decoder_model(concat)
 
-        outputs = [i_hat]
-        outputs.extend(z_p)
+        outputs = [i_hat, z_p]
+        # outputs.extend(z_p)
         self.model = Model(inputs=inp, outputs=outputs)
         print("Outputs shape %s" % self.model.output_shape)
 
-        ploss = [pose_loss()] * len(z_p)
+        # ploss = [pose_loss()] * len(z_p)
+        ploss = [pose_loss()] * self.n_blocks
         losses = [reconstruction_loss()]
         losses.extend(ploss)
         

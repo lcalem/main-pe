@@ -39,6 +39,7 @@ class PoseModel(object):
         1. stem
         2. stacking the blocks
         '''
+        print("BUILDING POSE")
 
         inp = Input(shape=input_shape)
         outputs = list()
@@ -63,7 +64,7 @@ class PoseModel(object):
             h = self.pose_block(x, name='RegMap%d' % (i_block + 1))
 
             pose, visible = self.pose_regression(h, name='PoseReg%s' % (i_block + 1))
-            pose_vis = concatenate([pose, visible], axis=-1)
+            pose_vis = concatenate([pose, visible], axis=-1, name='PoseVisConcat%s' % (i_block + 1))
             print("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
 
             outputs.append(pose_vis)
@@ -72,7 +73,7 @@ class PoseModel(object):
                 h = self.fremap_block(h, block_shape[-1], name='fReMap%d' % (i_block + 1))
                 x = add([identity_map, x, h])
 
-        self._model = Model(inputs=inp, outputs=outputs)
+        self._model = Model(inputs=inp, outputs=outputs, name='pose_model')
 
     def stem(self, inp):
         '''
@@ -81,32 +82,36 @@ class PoseModel(object):
         input: 256 x 256 x 3
         output: 32 x 32 x 576
         '''
-        xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
+        print("BUILDING STEM")
+        # xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
 
-        x = layers.conv_bn_act(xi, 32, (3, 3), strides=(2, 2))
-        x = layers.conv_bn_act(x, 32, (3, 3))
-        x = layers.conv_bn_act(x, 64, (3, 3))
+        x = layers.conv_bn_act(inp, 32, (3, 3), strides=(2, 2), name="stem1")
+        x = layers.conv_bn_act(x, 32, (3, 3), name="stem2")
+        x = layers.conv_bn_act(x, 64, (3, 3), name="stem3")
 
-        a = layers.conv_bn_act(x, 96, (3, 3), strides=(2, 2))
-        b = MaxPooling2D((3, 3), strides=(2, 2), padding='same')(x)
-        x = concatenate([a, b])
+        a = layers.conv_bn_act(x, 96, (3, 3), strides=(2, 2), name="stem4")
+        b = MaxPooling2D((3, 3), strides=(2, 2), padding='same', name="stem5")(x)
+        x = concatenate([a, b], name="stem6")
 
-        a = layers.conv_bn_act(x, 64, (1, 1))
-        a = layers.conv_bn(a, 96, (3, 3))
-        b = layers.conv_bn_act(x, 64, (1, 1))
-        b = layers.conv_bn_act(b, 64, (5, 1))
-        b = layers.conv_bn_act(b, 64, (1, 5))
-        b = layers.conv_bn(b, 96, (3, 3))
-        x = concatenate([a, b])
+        a = layers.conv_bn_act(x, 64, (1, 1), name="stem7")
+        a = layers.conv_bn(a, 96, (3, 3), name="stem8")
+        b = layers.conv_bn_act(x, 64, (1, 1), name="stem9")
+        b = layers.conv_bn_act(b, 64, (5, 1), name="stem10")
+        b = layers.conv_bn_act(b, 64, (1, 5), name="stem11")
+        b = layers.conv_bn(b, 96, (3, 3), name="stem12")
+        x = concatenate([a, b], name="stem13")
 
-        a = layers.act_conv_bn(x, 192, (3, 3), strides=(2, 2))
-        b = MaxPooling2D((2, 2), strides=(2, 2))(x)
-        x = concatenate([a, b])
+        a = layers.act_conv_bn(x, 192, (3, 3), strides=(2, 2), name="stem14")
+        b = MaxPooling2D((2, 2), strides=(2, 2), name="stem15")(x)
+        x = concatenate([a, b], name="stem16")
 
         x = blocks.sepconv_residual(x, 3 * 192, name='sepconv1')
 
-        model = Model(xi, x, name='Stem')
-        x = model(inp)
+        # model = Model(xi, x, name='Stem')
+        # print("Stem model summary")
+        # model.summary()
+        
+        # x = model(inp)
 
         return x
 
@@ -193,11 +198,11 @@ class PoseModel(object):
         size = int(input_shape[-1])
 
         # first branch
-        xi = Input(shape=input_shape)
-        a = blocks.sepconv_residual(xi, size, name='sepconv_l1', kernel_size=ksize)
+        # xi = Input(shape=input_shape)
+        a = blocks.sepconv_residual(inp, size, name='sepconv_l1', kernel_size=ksize)
 
         # second branch
-        low1 = MaxPooling2D((2, 2))(xi)
+        low1 = MaxPooling2D((2, 2))(inp)
         low1 = layers.act_conv_bn(low1, int(size/2), (1, 1))
         low1 = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_1', kernel_size=ksize)
         b = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_2', kernel_size=ksize)
@@ -216,9 +221,9 @@ class PoseModel(object):
 
         # merge first and second branches
         x = add([a, b])
-        model = Model(inputs=xi, outputs=x, name=name)
+        # model = Model(inputs=xi, outputs=x, name=name)
 
-        return model(inp)
+        return x
 
     def sepconv_block(self, inp, name):
         '''
@@ -226,26 +231,27 @@ class PoseModel(object):
         '''
         input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
-        x = layers.separable_act_conv_bn(xi, input_shape[-1], self.kernel_size)
+        # xi = Input(shape=input_shape)
+        x = layers.separable_act_conv_bn(inp, input_shape[-1], self.kernel_size)
 
-        model = Model(inputs=xi, outputs=x, name=name)
+        # model = Model(inputs=xi, outputs=x, name=name)
 
-        return model(inp)
+        return x
 
     def pose_block(self, inp, name):
         '''
         input: 32 x 32 x 576
         output: 32 x 32 x 16 (number of heatmaps)
         '''
-        input_shape = inp.get_shape().as_list()[1:]
+        # input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
-        x = layers.act_conv(xi, self.n_heatmaps, (1, 1))
+        # xi = Input(shape=input_shape)
+        x = layers.act_conv(inp, self.n_heatmaps, (1, 1))
 
-        model = Model(inputs=xi, outputs=x, name=name)
+        # model = Model(inputs=xi, outputs=x, name=name)
 
-        return model(inp)
+        # return model(inp)
+        return x
     
     def pose_regression(self, heatmaps, name):
         if self.dim == 2:
@@ -311,11 +317,11 @@ class PoseModel(object):
         return pose, visible
 
     def fremap_block(self, inp, num_filters, name=None):
-        input_shape = inp.get_shape().as_list()[1:]
+        # input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
-        x = layers.act_conv_bn(xi, num_filters, (1, 1))
+        # xi = Input(shape=input_shape)
+        x = layers.act_conv_bn(inp, num_filters, (1, 1))
 
-        model = Model(inputs=xi, outputs=x, name=name)
+        # model = Model(inputs=inp, outputs=x, name=name)
 
-        return model(inp)
+        return x
