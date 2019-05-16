@@ -116,9 +116,8 @@ class PoseModel(object):
         input: 256 x 256 x 3
         output: 32 x 32 x 576
         '''
-        xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
 
-        x = layers.conv_bn_act(xi, 32, (3, 3), strides=(2, 2))
+        x = layers.conv_bn_act(inp, 32, (3, 3), strides=(2, 2))
         x = layers.conv_bn_act(x, 32, (3, 3))
         x = layers.conv_bn_act(x, 64, (3, 3))
 
@@ -139,9 +138,6 @@ class PoseModel(object):
         x = concatenate([a, b])
 
         x = blocks.sepconv_residual(x, 3 * 192, name='sepconv1')
-
-        model = Model(xi, x, name='Stem')
-        x = model(inp)
 
         return x
 
@@ -228,11 +224,10 @@ class PoseModel(object):
         size = int(input_shape[-1])
 
         # first branch
-        xi = Input(shape=input_shape)
-        a = blocks.sepconv_residual(xi, size, name='sepconv_l1', kernel_size=ksize)
+        a = blocks.sepconv_residual(inp, size, name='sepconv_l1', kernel_size=ksize)
 
         # second branch
-        low1 = MaxPooling2D((2, 2))(xi)
+        low1 = MaxPooling2D((2, 2))(inp)
         low1 = layers.act_conv_bn(low1, int(size/2), (1, 1))
         low1 = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_1', kernel_size=ksize)
         b = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_2', kernel_size=ksize)
@@ -251,9 +246,8 @@ class PoseModel(object):
 
         # merge first and second branches
         x = add([a, b])
-        model = Model(inputs=xi, outputs=x, name=name)
 
-        return model(inp)
+        return x
 
     def sepconv_block(self, inp, name):
         '''
@@ -261,26 +255,19 @@ class PoseModel(object):
         '''
         input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
         x = layers.separable_act_conv_bn(xi, input_shape[-1], self.kernel_size)
 
-        model = Model(inputs=xi, outputs=x, name=name)
-
-        return model(inp)
+        return x
 
     def pose_block(self, inp, name):
         '''
         input: 32 x 32 x 576
         output: 32 x 32 x 16 (number of heatmaps)
         '''
-        input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
         x = layers.act_conv(xi, self.n_heatmaps, (1, 1))
 
-        model = Model(inputs=xi, outputs=x, name=name)
-
-        return model(inp)
+        return x
     
     def pose_regression(self, heatmaps, name):
         if self.dim == 2:
@@ -346,11 +333,7 @@ class PoseModel(object):
         return pose, visible
 
     def fremap_block(self, inp, num_filters, name=None):
-        input_shape = inp.get_shape().as_list()[1:]
 
-        xi = Input(shape=input_shape)
         x = layers.act_conv_bn(xi, num_filters, (1, 1))
 
-        model = Model(inputs=xi, outputs=x, name=name)
-
-        return model(inp)
+        return x
