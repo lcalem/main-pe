@@ -224,24 +224,24 @@ class PoseModel(object):
         size = int(input_shape[-1])
 
         # first branch
-        a = blocks.sepconv_residual(inp, size, name='sepconv_l1', kernel_size=ksize)
+        a = blocks.sepconv_residual(inp, size, name='%s_sepconv_l1' % name, kernel_size=ksize)
 
         # second branch
         low1 = MaxPooling2D((2, 2))(inp)
         low1 = layers.act_conv_bn(low1, int(size/2), (1, 1))
-        low1 = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_1', kernel_size=ksize)
-        b = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_2', kernel_size=ksize)
+        low1 = blocks.sepconv_residual(low1, int(size/2), name='%s_sepconv_l2_1' % name, kernel_size=ksize)
+        b = blocks.sepconv_residual(low1, int(size/2), name='%s_sepconv_l2_2' % name, kernel_size=ksize)
 
         # third branch
         c = MaxPooling2D((2, 2))(low1)
-        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_1', kernel_size=ksize)
-        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_2', kernel_size=ksize)
-        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_3', kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_1' % name, kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_2' % name, kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_3' % name, kernel_size=ksize)
         c = UpSampling2D((2, 2))(c)
 
         # merge second and third branches
         b = add([b, c])
-        b = blocks.sepconv_residual(b, size, name='sepconv_l2_3', kernel_size=ksize)
+        b = blocks.sepconv_residual(b, size, name='%s_sepconv_l2_3' % name, kernel_size=ksize)
         b = UpSampling2D((2, 2))(b)
 
         # merge first and second branches
@@ -255,7 +255,7 @@ class PoseModel(object):
         '''
         input_shape = inp.get_shape().as_list()[1:]
 
-        x = layers.separable_act_conv_bn(xi, input_shape[-1], self.kernel_size)
+        x = layers.separable_act_conv_bn(inp, input_shape[-1], self.kernel_size)
 
         return x
 
@@ -265,7 +265,7 @@ class PoseModel(object):
         output: 32 x 32 x 16 (number of heatmaps)
         '''
 
-        x = layers.act_conv(xi, self.n_heatmaps, (1, 1))
+        x = layers.act_conv(inp, self.n_heatmaps, (1, 1))
 
         return x
     
@@ -334,6 +334,6 @@ class PoseModel(object):
 
     def fremap_block(self, inp, num_filters, name=None):
 
-        x = layers.act_conv_bn(xi, num_filters, (1, 1))
+        x = layers.act_conv_bn(inp, num_filters, (1, 1))
 
         return x

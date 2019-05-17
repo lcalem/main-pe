@@ -1,7 +1,7 @@
 import os
 
-# from tensorflow.keras.models import load_model
-from model.keras_load import load_model
+from tensorflow.keras.models import load_model
+# from model.keras_load import load_model
 
 from model import callbacks
 from model.utils import log
