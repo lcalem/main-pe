@@ -78,6 +78,6 @@ class MultiBranchStopped(MultiBranchReduced):
     '''
 
     def concat(self, z_a, z_p):
-        tf.keras.backend.stop_gradient(z_p)
+        zp = tf.stop_gradient(z_p)
         concat = concatenate([z_a, z_p], name='z_concat')
         return concat
