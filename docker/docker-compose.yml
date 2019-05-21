@@ -1,18 +1,19 @@
-version: '3.3'
+version: '2'
 services:
 
-  dummy:
-    image: dummy:latest
+  pose_laura:
+    image: pose_laura:latest
     environment:
-      - "DAT_VARIABLE=value"
+      - "DAT_VARIABLE=dat_value"
     volumes:
-      - /home/{$USER}:/workspace
+      - /home/caleml/:/workspace
     devices:
       - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidia1:/dev/nvidia1
+      - /dev/nvidia2:/dev/nvidia2
+      - /dev/nvidia3:/dev/nvidia3
       - /dev/nvidiactl
       - /dev/nvidia-uvm
     ports:
-      - 3000:3000
-    networks:
-      overlay: null
+      - 3000:8888
     

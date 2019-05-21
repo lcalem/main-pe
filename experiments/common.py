@@ -24,15 +24,18 @@ from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
 from model.utils import pose_format, log
 
 
-def exp_init(params):
+def exp_init(params, base_folder=None):
     '''
     common actions for setuping an experiment:
     - create experiment folder
     - dump config in it
     - dump current model code in it (because for now we only save weights)
     '''
+    if base_folder is None:
+        base_folder = os.environ['HOME']
+        
     # model folder
-    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (os.environ['HOME'], datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
+    model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (base_folder, datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
     os.makedirs(model_folder)
     print("Conducting experiment for %s epochs and %s blocks in folder %s" % (params['n_epochs'], params['pose_blocks'], model_folder))
 
@@ -63,7 +66,7 @@ def lr_scheduler(epoch, lr):
 
 class Launcher():
     
-    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth):
+    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth, dim, nb_joints):
         
         self.exp_type = exp_type
         self.dataset_path = dataset_path
@@ -72,6 +75,9 @@ class Launcher():
         self.batch_size = batch_size
         self.pose_blocks = pose_blocks
         self.zp_depth = zp_depth
+        
+        self.dim = dim
+        self.nb_joints = nb_joints
         
         if zp_depth is not None:
             assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced'], 'zp_depth is an option for hybrid_reduced model'
@@ -149,33 +155,33 @@ class Launcher():
     def build_model(self):
         
         if self.exp_type == 'baseline':
-            self.model = MultiBranchModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model = MultiBranchModel(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build_pose_only()
             
         elif self.exp_type == 'hybrid':
-            self.model = MultiBranchModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model = MultiBranchModel(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         elif self.exp_type == 'hybrid_reduced':
             assert isinstance(self.zp_depth, int), 'wrong zp_depth %s' % self.zp_depth
             log.printcn(log.OKBLUE, 'launching hybrid_reduced model with zp_depth = %s' % self.zp_depth)
-            self.model = MultiBranchReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
+            self.model = MultiBranchReduced(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
             self.model.build()
             
         elif self.exp_type == 'hybrid_vgg':
-            self.model = MultiBranchVGGModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model = MultiBranchVGGModel(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         elif self.exp_type == 'hybrid_stop':
-            self.model = MultiBranchStopped(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
+            self.model = MultiBranchStopped(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
             self.model.build()
             
         elif self.exp_type == 'cycle':
-            self.model = CycleModel(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model = CycleModel(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         elif self.exp_type == 'cycle_reduced':
-            self.model = CycleReduced(dim=3, n_joints=17, nb_pose_blocks=self.pose_blocks)
+            self.model = CycleReduced(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         else:
@@ -211,11 +217,13 @@ if __name__ == '__main__':
     parser.add_argument("--gpu", required=True)
     parser.add_argument("--name")
     parser.add_argument("--zp_depth", type=int, default=128)
+    parser.add_argument("--dim", type=int, default=3)
+    parser.add_argument("--nb_joints", type=int, default=17)
     args = parser.parse_args()
     
     model_folder = exp_init(vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     
-    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth)
+    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth, args.dim, args.nb_joints)
     launcher.launch()

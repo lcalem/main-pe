@@ -6,7 +6,6 @@ from tensorflow.keras.layers import Activation, GlobalMaxPooling1D, GlobalMaxPoo
 
 from model import blocks
 from model import layers
-from model.utils import log
 
 
 DEPTH_MAPS = 16
@@ -14,24 +13,12 @@ DEPTH_MAPS = 16
 
 class PoseModel(object):
 
-    def __init__(self, input_shape, dim, n_joints, n_blocks, kernel_size, pose_only=False, zp_depth=None, verbose=True):
-        '''
-        zp_depth: number of channels for the z_p output.
-            defaults to 1024 (it is None here for the warning check) and is used only if pose_only is False
-        '''
+    def __init__(self, input_tensor, dim, n_joints, n_blocks, kernel_size):
         self.dim = dim
         
         self.n_joints = n_joints
         self.n_blocks = n_blocks
         self.kernel_size = kernel_size
-        self.pose_only = pose_only
-        self.zp_depth = zp_depth if zp_depth is not None else 1024
-        self.verbose = verbose
-        
-        print("zp_depth %s" % zp_depth)
-        
-        if self.pose_only and zp_depth is not None:
-            log.warning('the reduced option will be ignored because its not compatible with pose_only')
 
         if dim == 2:
             self.n_heatmaps = self.n_joints
@@ -41,41 +28,25 @@ class PoseModel(object):
         else:
             raise Exception('Dim can only be 2 or 3 (was %s)' % dim)
 
-        self.build(input_shape)
+        self.build(input_tensor)
 
     @property
     def model(self):
         return self._model
-    
-    def log(self, msg):
-        if self.verbose:
-            print(msg)
 
-    def build(self, input_shape):
+    def build(self, inp):
         '''
         1. stem
         2. stacking the blocks
-        
-        Shapes:
-        input: 256 x 256 x 3
-        outputs: [(n_joints, dim + 1) * n_blocks, (16 x 16 x 1024)]
-        
-        - last element of outputs is z_p (16 x 16 x 1024)
-        - remaining elements are the pose regression (one per block), size (n_joints, dim + 1)
-            - n_joints: 16 (MPII) or 17 (Human 3.6M)
-            - dim + 1: dimension (2 or 3) + 1 for visibility prediction
-            -> (16, 3) or (17, 4)
         '''
 
-        inp = Input(shape=input_shape)
         outputs = list()
-        
         x = self.stem(inp)
 
         # static layers
         num_rows, num_cols, num_filters = x.get_shape().as_list()[1:]
         # print("num rows %s, num cols %s, num filters %s" % (num_rows, num_cols, num_filters))
-        pose_input_shape = (num_rows, num_cols, self.n_joints)   # (32, 32, 17) like 
+        pose_input_shape = (num_rows, num_cols, self.n_joints)   # (32, 32, 16)
         self.pose_softargmax_model = self.build_softargmax_model(pose_input_shape)
         self.joint_visibility_model = self.build_visibility_model(pose_input_shape)
         self.pose_depth_model = self.build_depth_model()   # will be None for dim 2
@@ -91,23 +62,16 @@ class PoseModel(object):
             h = self.pose_block(x, name='RegMap%d' % (i_block + 1))
 
             pose, visible = self.pose_regression(h, name='PoseReg%s' % (i_block + 1))
-            pose_vis = concatenate([pose, visible], axis=-1, name="PoseOutput%s" % (i_block + 1))
-            self.log("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
+            pose_vis = concatenate([pose, visible], axis=-1)
+            print("pose shape %s, vis shape %s, concat shape %s" % (str(pose.shape), str(visible.shape), str(pose_vis.shape)))
 
             outputs.append(pose_vis)
 
-            # if i_block < self.n_blocks - 1:
-            h = self.fremap_block(h, block_shape[-1], name='fReMap%d' % (i_block + 1))
-            x = add([identity_map, x, h])
-            
-        # z_p from last block
-        if not self.pose_only:
-            self.log("Last H shape %s" % str(h))
-            z_p = MaxPooling2D((2, 2))(h)
-            z_p = layers.act_conv_bn(z_p, self.zp_depth, (1, 1), name="z_p")
-            outputs.append(z_p)
+            if i_block < self.n_blocks - 1:
+                h = self.fremap_block(h, block_shape[-1], name='fReMap%d' % (i_block + 1))
+                x = add([identity_map, x, h])
 
-        self._model = Model(inputs=inp, outputs=outputs, name='pose_model')
+        self._model = Model(inputs=inp, outputs=outputs)
 
     def stem(self, inp):
         '''
@@ -116,8 +80,9 @@ class PoseModel(object):
         input: 256 x 256 x 3
         output: 32 x 32 x 576
         '''
+        xi = Input(shape=inp.get_shape().as_list()[1:]) # 256 x 256 x 3
 
-        x = layers.conv_bn_act(inp, 32, (3, 3), strides=(2, 2))
+        x = layers.conv_bn_act(xi, 32, (3, 3), strides=(2, 2))
         x = layers.conv_bn_act(x, 32, (3, 3))
         x = layers.conv_bn_act(x, 64, (3, 3))
 
@@ -138,6 +103,9 @@ class PoseModel(object):
         x = concatenate([a, b])
 
         x = blocks.sepconv_residual(x, 3 * 192, name='sepconv1')
+
+        model = Model(xi, x, name='Stem')
+        x = model(inp)
 
         return x
 
@@ -224,30 +192,32 @@ class PoseModel(object):
         size = int(input_shape[-1])
 
         # first branch
-        a = blocks.sepconv_residual(inp, size, name='%s_sepconv_l1' % name, kernel_size=ksize)
+        xi = Input(shape=input_shape)
+        a = blocks.sepconv_residual(xi, size, name='sepconv_l1', kernel_size=ksize)
 
         # second branch
-        low1 = MaxPooling2D((2, 2))(inp)
+        low1 = MaxPooling2D((2, 2))(xi)
         low1 = layers.act_conv_bn(low1, int(size/2), (1, 1))
-        low1 = blocks.sepconv_residual(low1, int(size/2), name='%s_sepconv_l2_1' % name, kernel_size=ksize)
-        b = blocks.sepconv_residual(low1, int(size/2), name='%s_sepconv_l2_2' % name, kernel_size=ksize)
+        low1 = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_1', kernel_size=ksize)
+        b = blocks.sepconv_residual(low1, int(size/2), name='sepconv_l2_2', kernel_size=ksize)
 
         # third branch
         c = MaxPooling2D((2, 2))(low1)
-        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_1' % name, kernel_size=ksize)
-        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_2' % name, kernel_size=ksize)
-        c = blocks.sepconv_residual(c, int(size/2), name='%s_sepconv_l3_3' % name, kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_1', kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_2', kernel_size=ksize)
+        c = blocks.sepconv_residual(c, int(size/2), name='sepconv_l3_3', kernel_size=ksize)
         c = UpSampling2D((2, 2))(c)
 
         # merge second and third branches
         b = add([b, c])
-        b = blocks.sepconv_residual(b, size, name='%s_sepconv_l2_3' % name, kernel_size=ksize)
+        b = blocks.sepconv_residual(b, size, name='sepconv_l2_3', kernel_size=ksize)
         b = UpSampling2D((2, 2))(b)
 
         # merge first and second branches
         x = add([a, b])
+        model = Model(inputs=xi, outputs=x, name=name)
 
-        return x
+        return model(inp)
 
     def sepconv_block(self, inp, name):
         '''
@@ -255,19 +225,26 @@ class PoseModel(object):
         '''
         input_shape = inp.get_shape().as_list()[1:]
 
-        x = layers.separable_act_conv_bn(inp, input_shape[-1], self.kernel_size)
+        xi = Input(shape=input_shape)
+        x = layers.separable_act_conv_bn(xi, input_shape[-1], self.kernel_size)
 
-        return x
+        model = Model(inputs=xi, outputs=x, name=name)
+
+        return model(inp)
 
     def pose_block(self, inp, name):
         '''
         input: 32 x 32 x 576
         output: 32 x 32 x 16 (number of heatmaps)
         '''
+        input_shape = inp.get_shape().as_list()[1:]
 
-        x = layers.act_conv(inp, self.n_heatmaps, (1, 1))
+        xi = Input(shape=input_shape)
+        x = layers.act_conv(xi, self.n_heatmaps, (1, 1))
 
-        return x
+        model = Model(inputs=xi, outputs=x, name=name)
+
+        return model(inp)
     
     def pose_regression(self, heatmaps, name):
         if self.dim == 2:
@@ -333,7 +310,11 @@ class PoseModel(object):
         return pose, visible
 
     def fremap_block(self, inp, num_filters, name=None):
+        input_shape = inp.get_shape().as_list()[1:]
 
-        x = layers.act_conv_bn(inp, num_filters, (1, 1))
+        xi = Input(shape=input_shape)
+        x = layers.act_conv_bn(xi, num_filters, (1, 1))
 
-        return x
+        model = Model(inputs=xi, outputs=x, name=name)
+
+        return model(inp)

@@ -1,29 +1,5 @@
-# tensorflow 1.11.0
-# cudnn 7.2
-# cuda 9.0
-# ubuntu 16.04
-# nvidia drivers 384.90
+FROM tensorflow/tensorflow:2.0.0a0-gpu-py3
 
-FROM nvidia/cuda:9.0-runtime-ubuntu16.04
-
-# 1. cudnn
-ENV CUDNN_VERSION 7.2.1.38
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-libcudnn7=$CUDNN_VERSION-1+cuda9.0 && \
-apt-mark hold libcudnn7 && \
-rm -rf /var/lib/apt/lists/*
-
-# 2. python + tensorflow gpu
-RUN apt-get -y update && \
-apt-get -y install python3-pip python3-dev && \
-pip3 install --upgrade pip==9.0.3 && \
-pip3 install --upgrade numpy==1.13.3 && \
-pip3 install --upgrade tensorflow-gpu==1.11.0 && \
-apt-get clean && \
-rm -rf /var/lib/apt/lists/* /tmp/*
-
-# 3. other deps
 ADD docker/debian-requirements.txt debian-requirements.txt
 RUN DEBIAN_FRONTEND=noninteractive apt-get update --fix-missing && \
    DEBIAN_PACKAGES=$(egrep -v "^\s*(#|$)" debian-requirements.txt) && \
@@ -35,7 +11,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update --fix-missing && \
 ADD docker/requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt && rm requirements.txt
 
-ADD src src
 ADD docker/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
 
