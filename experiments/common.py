@@ -22,6 +22,7 @@ from model.networks.cycle_r_bb import CycleReducedBB
 from model.networks.multi_branch_model import MultiBranchModel
 from model.networks.mbm_vgg import MultiBranchVGGModel
 from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
+from model.networks.mbm_bb import MBMReducedBB
 from model.utils import pose_format, log
 
 
@@ -70,7 +71,7 @@ def lr_scheduler(epoch, lr):
 
 class Launcher():
     
-    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth, dim, nb_joints):
+    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth, dim, nb_joints, nb_workers):
         
         self.exp_type = exp_type
         self.dataset_path = dataset_path
@@ -82,9 +83,10 @@ class Launcher():
         
         self.dim = dim
         self.nb_joints = nb_joints
+        self.nb_workers = nb_workers
         
         if zp_depth is not None:
-            assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced'], 'zp_depth is an option for hybrid_reduced model'
+            assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced', 'hybrid_r_bb'], 'zp_depth is an option for hybrid_reduced model'
         
         self.pose_only = True if exp_type == 'baseline' else False
         
@@ -140,7 +142,7 @@ class Launcher():
         self.build_model()
         
         # train
-        self.model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs, cb_list=cb_list)
+        self.model.train(data_tr_h36m, steps_per_epoch=len(data_tr_h36m), model_folder=self.model_folder, n_epochs=self.n_epochs, cb_list=cb_list, n_workers=self.nb_workers)
         
         
     def get_h36m_outputs(self):
@@ -214,6 +216,7 @@ class Launcher():
 # python3 common.py --exp_type hybrid_stop --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
 # python3 common.py --exp_type cycle_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 # python3 common.py --exp_type cycle_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
+# python3 common.py --exp_type hybrid_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --nb_workers 6 --gpu 3
 
 ## GPUSERVER3
 # python3 common.py --exp_type baseline --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 2
@@ -232,11 +235,12 @@ if __name__ == '__main__':
     parser.add_argument("--zp_depth", type=int, default=128)
     parser.add_argument("--dim", type=int, default=3)
     parser.add_argument("--nb_joints", type=int, default=17)
+    parser.add_argument("--nb_workers", type=int, default=2)
     args = parser.parse_args()
     
     model_folder = exp_init(vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     
-    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth, args.dim, args.nb_joints)
+    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth, args.dim, args.nb_joints, args.nb_workers)
     launcher.launch()
