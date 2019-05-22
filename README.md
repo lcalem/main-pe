@@ -1,8 +1,17 @@
 
+# Multi branch disentangling for pose estimation
+
+## Presentation
+
+This is a work in progress so you might want to check it out later
+
+## Architecture
+
+
 
 ## Acknowledgements
 
-This work is build on the work of [Diogo Luvizon](https://github.com/dluvizon/deephar) from the paper:
+This work is built on the work of [Diogo Luvizon](https://github.com/dluvizon/deephar) from the paper:
 
 ```
 @InProceedings{Luvizon_2018_CVPR,
