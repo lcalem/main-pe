@@ -77,11 +77,27 @@ def reconstruction_loss():
     '''
 
     def _rec_loss(y_true, y_pred):
-        print("rec y_pred shape %s" % (str(y_pred.shape)))
         num_channels = y_pred.get_shape().as_list()[-1]
-
-        rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
+        assert num_channels == 3
+        
+        # print('red shape %s' % str(y_pred[:,:,:,0].shape))
+        se_red = tf.reduce_sum(tf.keras.backend.square(y_pred[:,:,:,0] - y_true[:,:,:,0]), axis=(-1, -2))
+        se_green = tf.reduce_sum(tf.keras.backend.square(y_pred[:,:,:,1] - y_true[:,:,:,1]), axis=(-1, -2))
+        se_blue = tf.reduce_sum(tf.keras.backend.square(y_pred[:,:,:,2] - y_true[:,:,:,2]), axis=(-1, -2))
+        # print('se_red shape %s' % str(se_red.shape))
+        
+        sum_channels = se_red + se_green + se_blue
+        # print('sum_channels %s' % str(sum_channels.shape))
+              
+        rec_loss = sum_channels / num_channels
+        
         return 0.1 * rec_loss
+        
+        #print("rec y_pred shape %s" % (str(y_pred.shape)))
+        #num_channels = y_pred.get_shape().as_list()[-1]
+
+        #rec_loss = tf.math.reduce_sum(tf.keras.backend.square(y_pred - y_true), axis=(-1, -2)) / num_channels
+        #return 0.1 * rec_loss
 
     return _rec_loss
 
