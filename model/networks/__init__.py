@@ -32,7 +32,7 @@ class BaseModel(object):
     def build(self):
         raise NotImplementedError
 
-    def train(self, data_tr, steps_per_epoch, model_folder, n_epochs, cb_list):
+    def train(self, data_tr, steps_per_epoch, model_folder, n_epochs, cb_list, n_workers=2):
         
         print("Training with %s callbacks" % len(cb_list))
 
@@ -42,7 +42,7 @@ class BaseModel(object):
                                  callbacks=cb_list,
                                  use_multiprocessing=False,
                                  max_queue_size=10,
-                                 workers=2,
+                                 workers=n_workers,
                                  initial_epoch=0)
         
     def predict(self, data):

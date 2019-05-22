@@ -9,22 +9,33 @@ from tensorflow.keras.layers import Lambda
 from tensorflow.keras.optimizers import RMSprop
 
 from model.losses import cycle_loss, noop_loss, pose_loss, reconstruction_loss
-from model.networks.mbm_reduced import MultiBranchReduced
+from model.networks.mbm_bb import MBMReducedBB
 
 
-class CycleReducedBB(MultiBranchReduced):
+class CycleReducedBB(MBMReducedBB):
     '''
-    stopped gradients between decoder and Ep
+    Inherits from the branch balancing without the cycle (mbm_bb)
     '''
+    
+    def __init__(self, 
+                 dim, 
+                 cut_zp,
+                 n_joints=16, 
+                 nb_pose_blocks=8, 
+                 reception_kernel_size=(5, 5), 
+                 verbose=True, 
+                 zp_depth=128):
+        '''
+        cut_zp: bool
+        -> whether or not we backpropagate the i_hat reconstruction loss to Ep
+        If not, the only losses backpropagated through Ep will the the pose loss and the cycle consistency loss
+        '''
+        self.cut_zp = cut_zp
+        
+        MBMReducedBB.__init__(self, dim, n_joints, nb_pose_blocks, reception_kernel_size, verbose, zp_depth, za_depth=128)
     
     def build(self):
         '''
-        override of build!
-        -> first part (up to i_hat) is the same
-        -> after i_hat we put the specific cycle thing
-        
-        TODO: refactor (uglyyyyyyy)
-        
         Outputs for reduced cycle (in that order):
         - i_hat (None, 256, 256, 3)
         - pose (None, 17, 4)   (times nblock)
@@ -43,8 +54,7 @@ class CycleReducedBB(MultiBranchReduced):
         z_a, z_p, poses = self.call_encoders(inp)
 
         # decoder
-        i_hat = self.branch_balancing(z_a, z_p) 
-        i_hat = Lambda(lambda x: x, name='i_hat')(i_hat)    # naming to differentiate from mixed
+        i_hat = Lambda(self.branch_balancing, name='i_hat_bb')([inp, z_a, z_p])  # naming to differentiate from mixed 
 
         # shuffle z_a and z_p from images from the batch and create new images
         concat_shuffled = self.shuffle(z_a, z_p)
