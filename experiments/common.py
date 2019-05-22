@@ -18,6 +18,7 @@ from model import config
 from model import callbacks
 from model.networks.cycle_model import CycleModel
 from model.networks.cycle_reduced import CycleReduced
+from model.networks.cycle_r_bb import CycleReducedBB
 from model.networks.multi_branch_model import MultiBranchModel
 from model.networks.mbm_vgg import MultiBranchVGGModel
 from model.networks.mbm_reduced import MultiBranchReduced, MultiBranchStopped
@@ -33,6 +34,9 @@ def exp_init(params, base_folder=None):
     '''
     if base_folder is None:
         base_folder = os.environ['HOME']
+        
+    if params['exp_type'].startswith('baseline'):
+        params['pose_only'] = True
         
     # model folder
     model_folder = '%s/pe_experiments/exp_%s_%s_%s_%sb_bs%s' % (base_folder, datetime.datetime.now().strftime("%Y%m%d_%H%M"), params['exp_type'], params.get('name', ''), params['pose_blocks'], params['batch_size'])
@@ -176,12 +180,20 @@ class Launcher():
             self.model = MultiBranchStopped(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
             self.model.build()
             
+        elif self.exp_type == 'hybrid_r_bb':
+            self.model = MBMReducedBB(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks, zp_depth=self.zp_depth)
+            self.model.build()
+            
         elif self.exp_type == 'cycle':
             self.model = CycleModel(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         elif self.exp_type == 'cycle_reduced':
             self.model = CycleReduced(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
+            self.model.build()
+            
+        elif self.exp_type == 'cycle_r_bb':
+            self.model = CycleReducedBB(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         else:
@@ -201,6 +213,7 @@ class Launcher():
 
 # python3 common.py --exp_type hybrid_stop --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
 # python3 common.py --exp_type cycle_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
+# python3 common.py --exp_type cycle_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
 
 ## GPUSERVER3
 # python3 common.py --exp_type baseline --dataset_path '/home/calem/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 3 --gpu 2

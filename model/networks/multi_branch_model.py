@@ -64,10 +64,11 @@ class MBMBase(BaseModel):
         self.model = Model(inputs=inp, outputs=outputs)
         self.log("Outputs shape %s" % self.model.output_shape)
         
-        train_mpjpe = self.get_mpjpe_metric()
+        # train_mpjpe = self.get_mpjpe_metric()
         
-        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr), metrics={'PoseOutput1': train_mpjpe})
+        # self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr), metrics={'PoseOutput1': train_mpjpe})
         # self.model.compile(loss=losses, optimizer=Adam())
+        self.model.compile(loss=losses, optimizer=RMSprop(lr=self.start_lr))
         
         if self.verbose:
             self.log("Final model summary")
