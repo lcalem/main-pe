@@ -77,8 +77,7 @@ def reconstruction_loss():
     '''
 
     def _rec_loss(y_true, y_pred):
-        num_channels = y_pred.get_shape().as_list()[-1]
-        assert num_channels == 3
+        y_pred_shape = y_pred.get_shape().as_list()
         
         # print('red shape %s' % str(y_pred[:,:,:,0].shape))
         se_red = tf.reduce_sum(tf.keras.backend.square(y_pred[:,:,:,0] - y_true[:,:,:,0]), axis=(-1, -2))
@@ -89,7 +88,7 @@ def reconstruction_loss():
         sum_channels = se_red + se_green + se_blue
         # print('sum_channels %s' % str(sum_channels.shape))
               
-        rec_loss = sum_channels / num_channels
+        rec_loss = sum_channels / (y_pred_shape[-1] + y_pred_shape[-2] + y_pred_shape[-3])
         
         return 0.1 * rec_loss
         
