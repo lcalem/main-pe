@@ -71,7 +71,7 @@ def lr_scheduler(epoch, lr):
 
 class Launcher():
     
-    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth, dim, nb_joints, nb_workers):
+    def __init__(self, exp_type, dataset_path, model_folder, n_epochs, batch_size, pose_blocks, zp_depth, dim, nb_joints, nb_workers, cut_zp):
         
         self.exp_type = exp_type
         self.dataset_path = dataset_path
@@ -80,13 +80,17 @@ class Launcher():
         self.batch_size = batch_size
         self.pose_blocks = pose_blocks
         self.zp_depth = zp_depth
+        self.cut_zp = cut_zp
         
         self.dim = dim
         self.nb_joints = nb_joints
         self.nb_workers = nb_workers
         
         if zp_depth is not None:
-            assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced', 'hybrid_r_bb'], 'zp_depth is an option for hybrid_reduced model'
+            assert exp_type in ['hybrid_reduced', 'hybrid_stop', 'cycle_reduced', 'hybrid_r_bb', 'cycle_r_bb'], 'zp_depth is an option for hybrid_reduced model'
+            
+        if cut_zp is not None:
+            assert exp_type in ['cycle_r_bb']
         
         self.pose_only = True if exp_type == 'baseline' else False
         
@@ -195,13 +199,25 @@ class Launcher():
             self.model.build()
             
         elif self.exp_type == 'cycle_r_bb':
-            self.model = CycleReducedBB(dim=self.dim, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
+            self.model = CycleReducedBB(dim=self.dim, cut_zp=self.cut_zp, n_joints=self.nb_joints, nb_pose_blocks=self.pose_blocks)
             self.model.build()
             
         else:
             raise Exception('Unknown exp type %s' % self.exp_type)
     
 
+def str2bool(v):
+    if v is None:
+        return v
+    
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+        
+        
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 1 --gpu 2
 # python3 common.py --exp_type hybrid --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
 # python3 common.py --exp_type cycle --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 12 --pose_blocks 2 --gpu 2
@@ -215,7 +231,8 @@ class Launcher():
 
 # python3 common.py --exp_type hybrid_stop --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 32 --pose_blocks 2 --gpu 1
 # python3 common.py --exp_type cycle_reduced --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 2
-# python3 common.py --exp_type cycle_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --gpu 3
+# python3 common.py --exp_type cycle_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --nb_workers 6 --gpu 0 --cut_zp false --name notstopped
+# python3 common.py --exp_type cycle_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --nb_workers 6 --gpu 0 --cut_zp true --name stopped
 # python3 common.py --exp_type hybrid_r_bb --dataset_path '/home/caleml/datasets/h36m' --dataset_name 'h36m' --n_epochs 60 --batch_size 16 --pose_blocks 2 --nb_workers 6 --gpu 3
 
 ## GPUSERVER3
@@ -236,11 +253,14 @@ if __name__ == '__main__':
     parser.add_argument("--dim", type=int, default=3)
     parser.add_argument("--nb_joints", type=int, default=17)
     parser.add_argument("--nb_workers", type=int, default=2)
+    parser.add_argument("--cut_zp", default=None)
     args = parser.parse_args()
     
     model_folder = exp_init(vars(args))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     
-    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth, args.dim, args.nb_joints, args.nb_workers)
+    cut_zp = str2bool(args.cut_zp)
+    
+    launcher = Launcher(args.exp_type, args.dataset_path, model_folder, int(args.n_epochs), args.batch_size, args.pose_blocks, args.zp_depth, args.dim, args.nb_joints, args.nb_workers, cut_zp)
     launcher.launch()
