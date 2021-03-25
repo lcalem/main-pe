@@ -16,4 +16,4 @@ matplotlib==2.2.3
 h5py
 numpy
 gym
-PyYAML==3.13
+PyYAML==5.4
